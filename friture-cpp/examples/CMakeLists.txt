@@ -11,7 +11,7 @@ target_link_libraries(test_sdl2 ${SDL2_LIBRARIES})
 # 3. FFT test
 add_executable(test_fft test_fft.cpp)
 if(USE_FFTW)
-    target_link_libraries(test_fft ${FFTW3_LIBRARY} m)
+    target_link_libraries(test_fft ${FFTW3_LIBRARY} fftw3f m)
 else()
     target_link_libraries(test_fft Eigen3::Eigen)
 endif()
