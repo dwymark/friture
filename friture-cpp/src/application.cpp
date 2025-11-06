@@ -4,6 +4,7 @@
  */
 
 #include <friture/application.hpp>
+#include <friture/audio/audio_file_loader.hpp>
 #include <iostream>
 #include <cmath>
 #include <algorithm>
@@ -201,10 +202,37 @@ void FritureApp::generateChirp(float f_start, float f_end, float duration) {
 
 bool FritureApp::loadAudioFromFile(const char* filename) {
     std::cout << "\nLoading audio from file: " << filename << std::endl;
-    // TODO: Implement WAV file loading
-    // For now, just generate a test signal
-    std::cerr << "WAV loading not implemented yet - generating test chirp" << std::endl;
-    generateChirp(100.0f, 10000.0f, 5.0f);
+
+    AudioFileLoader loader;
+    std::vector<float> samples;
+    float file_sample_rate;
+
+    if (!loader.load(filename, samples, file_sample_rate)) {
+        std::cerr << "Failed to load WAV file: " << loader.getError() << std::endl;
+        std::cerr << "Generating test chirp instead..." << std::endl;
+        generateChirp(100.0f, 10000.0f, 5.0f);
+        return false;
+    }
+
+    // Check if sample rate matches our processing sample rate
+    if (std::abs(file_sample_rate - settings_.sample_rate) > 1.0f) {
+        std::cout << "Warning: File sample rate (" << file_sample_rate << " Hz) "
+                  << "differs from processing sample rate (" << settings_.sample_rate << " Hz)"
+                  << std::endl;
+        std::cout << "Resampling not yet implemented - using file as-is" << std::endl;
+        // TODO: Implement resampling in future version
+        settings_.sample_rate = file_sample_rate;
+    }
+
+    // Write samples to ring buffer
+    ring_buffer_->write(samples.data(), samples.size());
+    total_audio_samples_ = samples.size();
+    current_audio_position_ = 0;
+
+    const WavInfo& info = loader.getInfo();
+    std::cout << "Successfully loaded: " << info.getFormatDescription() << std::endl;
+    std::cout << "Total samples: " << total_audio_samples_ << std::endl;
+
     return true;
 }
 

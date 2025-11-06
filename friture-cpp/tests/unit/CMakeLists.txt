@@ -228,3 +228,40 @@ set_tests_properties(spectrogram_image_test PROPERTIES
     TIMEOUT 60
     ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
 )
+
+# ============================================================================
+# Audio File Loader Test
+# ============================================================================
+
+# Create audio_file_loader test executable
+add_executable(audio_file_loader_test audio_file_loader_test.cpp)
+
+# Link against GoogleTest and friture_audio library
+target_link_libraries(audio_file_loader_test
+    friture_audio
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+)
+
+# Include directories
+target_include_directories(audio_file_loader_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Enable sanitizers for tests
+if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+    # Apply sanitizer flags
+    target_compile_options(audio_file_loader_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(audio_file_loader_test PRIVATE ${SANITIZER_FLAGS})
+    message(STATUS "Enabled sanitizers for audio_file_loader_test (ASan + UBSan)")
+endif()
+
+# Register test with CTest
+add_test(NAME audio_file_loader_test COMMAND audio_file_loader_test)
+
+# Set test properties
+set_tests_properties(audio_file_loader_test PROPERTIES
+    TIMEOUT 30
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
+)

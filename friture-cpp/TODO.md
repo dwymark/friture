@@ -460,6 +460,89 @@ Each feature should meet these criteria before moving to the next:
 
 ---
 
+## Future Enhancement: Large File Streaming
+
+### Background
+Current WAV file loader (v1.0) loads entire file into memory. This is simple and works well for typical audio files, but can be problematic for very large files (>100MB or >60 seconds at 48 kHz).
+
+### Streaming Implementation Plan
+
+When implementing large file streaming, consider this architecture:
+
+#### **API Design:**
+```cpp
+class AudioFileLoader {
+public:
+    // Existing: Load entire file
+    bool load(const char* filename, std::vector<float>& samples, float& sample_rate);
+
+    // NEW: Streaming API
+    bool openStream(const char* filename);
+    size_t readChunk(float* buffer, size_t num_samples);
+    void closeStream();
+    bool seek(size_t sample_offset);
+
+private:
+    FILE* stream_fp_;
+    size_t data_start_offset_;
+    size_t current_read_pos_;
+};
+```
+
+#### **Integration with Application:**
+```cpp
+// Instead of loading all samples at once:
+AudioFileLoader loader;
+loader.openStream("large_file.wav");
+
+// In processAudioFrame():
+while (loader.readChunk(temp_buffer, chunk_size)) {
+    ring_buffer_->write(temp_buffer, chunk_size);
+    processAudioFrame();
+}
+
+loader.closeStream();
+```
+
+#### **Edge Cases:**
+- ✅ **File position tracking** - Remember where we are in the file
+- ✅ **Partial reads** - Handle EOF gracefully
+- ✅ **Seek operations** - Jump to specific time positions
+- ✅ **Buffer management** - Use fixed-size chunks (e.g., 4096 samples)
+- ✅ **Memory footprint** - Keep only ~1 second in memory instead of entire file
+- ⚠️ **Thread safety** - If streaming from background thread
+- ⚠️ **Format changes mid-file** - Detect and handle gracefully
+
+#### **Performance Targets:**
+- Chunk size: 4096 samples (85ms at 48 kHz)
+- Read latency: <5ms per chunk
+- Memory usage: <10MB for streaming (vs. 100MB+ for full file load)
+
+#### **Testing Strategy:**
+```cpp
+TEST(AudioFileLoaderTest, StreamLargeFile) {
+    AudioFileLoader loader;
+    ASSERT_TRUE(loader.openStream("10_minute_file.wav"));
+
+    std::vector<float> chunk(4096);
+    size_t total_read = 0;
+
+    while (loader.readChunk(chunk.data(), chunk.size()) > 0) {
+        total_read += chunk.size();
+    }
+
+    EXPECT_GT(total_read, 48000 * 600); // 10 minutes at 48 kHz
+    loader.closeStream();
+}
+```
+
+#### **When to Implement:**
+- After RtAudio integration (Priority #3)
+- Before advanced rendering (Priority #4)
+- Estimated effort: 2-3 hours
+
+---
+
 **Last Updated:** 2025-11-06
-**Next Immediate Task:** WAV File Loading (Item #1)
+**Next Immediate Task:** ✅ WAV File Loading COMPLETE → SDL_ttf Integration (Item #2)
 **Current Milestone:** Phase 4 - Enhanced I/O & Real-time Audio
