@@ -80,3 +80,40 @@ set_tests_properties(settings_test PROPERTIES
     TIMEOUT 10
     ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
 )
+
+# ============================================================================
+# FFT Processor Test
+# ============================================================================
+
+# Create fft_processor test executable
+add_executable(fft_processor_test fft_processor_test.cpp)
+
+# Link against GoogleTest and friture_processing library
+target_link_libraries(fft_processor_test
+    friture_processing
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+)
+
+# Include directories
+target_include_directories(fft_processor_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Enable sanitizers for tests
+if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+    # Apply sanitizer flags
+    target_compile_options(fft_processor_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(fft_processor_test PRIVATE ${SANITIZER_FLAGS})
+    message(STATUS "Enabled sanitizers for fft_processor_test (ASan + UBSan)")
+endif()
+
+# Register test with CTest
+add_test(NAME fft_processor_test COMMAND fft_processor_test)
+
+# Set test properties - longer timeout for performance benchmarks
+set_tests_properties(fft_processor_test PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
+)
