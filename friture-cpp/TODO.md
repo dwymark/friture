@@ -110,44 +110,20 @@
 
 ---
 
-### 3️⃣ Screenshot Export & BMP Save (1-2 hours)
-
-**Goal:** Save current spectrogram view to image file
-
-**Implementation Details:**
-- Add keyboard shortcut (S key) to save screenshot
-- Export current spectrogram view as BMP file
-- Optionally support PNG (via stb_image_write or SDL2_image)
-- Include timestamp in filename
-- Add UI overlay annotations (frequency labels, settings)
-
-**Files to Modify:**
-- `Application::handleKeyboard()` - Add 'S' key handler
-- `Application::saveScreenshot()` - New method
-- Optionally create `ImageExporter` utility class
-
-**Edge Cases & Considerations:**
-- ✅ Output directory doesn't exist → Create automatically
-- ✅ File name collision → Append timestamp or counter
-- ✅ Disk full → Handle write errors gracefully
-- ✅ Permissions → Check write access before saving
-- ⚠️ PNG support → Optional, BMP is sufficient for v1.0
-- ⚠️ Include metadata → Embed settings as comment in file header
-
-**Features:**
-- Auto-filename: `spectrogram_2025-11-06_23-15-42.bmp`
-- Save full window or just spectrogram area (user choice)
-- Display confirmation message: "Saved: output/spectrogram_xxx.bmp"
-- Option to save with/without UI overlay
-
----
-
-### 4️⃣ Audio Engine - PortAudio Integration (6-8 hours)
+### 3️⃣ Audio Engine - RtAudio Integration (5-6 hours)
 
 **Goal:** Real-time microphone/line-in capture for live spectrogram
 
+**Why RtAudio over PortAudio:**
+- ✅ Native C++ API (not C-based) - Better fit for modern C++20 project
+- ✅ Simpler, more intuitive API - Easier integration
+- ✅ Single-file integration - Just one .cpp/.h to add
+- ✅ Automatic format/channel conversions built-in
+- ✅ Same cross-platform support and low-latency performance
+- ✅ Minimal dependencies
+
 **Implementation Details:**
-- Create `AudioEngine` class wrapping PortAudio
+- Create `AudioEngine` class wrapping RtAudio
 - Device enumeration and selection
 - Audio input stream with callback
 - Thread-safe ring buffer integration
@@ -158,34 +134,38 @@
 - `include/friture/audio/audio_engine.hpp`
 - `src/audio/audio_engine.cpp`
 - `include/friture/audio/audio_device_info.hpp` (device metadata)
+- `third_party/rtaudio/` (RtAudio.cpp, RtAudio.h - single file!)
 - `tests/unit/audio_engine_test.cpp`
 - `tests/integration/audio_pipeline_test.cpp`
 
 **Edge Cases & Considerations:**
 - ✅ No input devices → Graceful fallback to file/synthetic mode
 - ✅ Default device invalid → Try first available device
-- ✅ Sample rate mismatch → Resample or configure device
+- ✅ Sample rate mismatch → Configure device or resample
 - ✅ Buffer overflow → Drop frames and log warning
 - ✅ Buffer underflow → Insert silence, don't crash
 - ✅ Device disconnected during capture → Detect and stop gracefully
 - ✅ Multiple channels → Average to mono or select channel
 - ⚠️ Platform differences:
-  - Linux: ALSA, PulseAudio, JACK
-  - Windows: WASAPI, DirectSound
+  - Linux: ALSA, PulseAudio, JACK, OSS
+  - Windows: WASAPI, DirectSound, ASIO
   - macOS: CoreAudio
 - ⚠️ Latency tuning → Balance buffer size vs responsiveness
 - ⚠️ Audio callback thread → No allocations, no locks
 - ⚠️ Headless testing → Mock audio input or skip tests
+- ⚠️ RtAudio exceptions → Wrap in try-catch blocks
 
 **API Design:**
 ```cpp
 class AudioEngine {
 public:
     AudioEngine(size_t sample_rate = 48000, size_t buffer_size = 512);
+    ~AudioEngine();
 
     // Device management
     std::vector<AudioDeviceInfo> getInputDevices();
-    void setInputDevice(int device_id);
+    void setInputDevice(unsigned int device_id);
+    unsigned int getDefaultInputDevice();
 
     // Stream control
     void start();
@@ -200,28 +180,64 @@ public:
     size_t getDroppedFrames() const;
 
 private:
-    static int audioCallback(const void* input, void* output,
-                            unsigned long frames, ...);
+    // RtAudio callback (C++ style)
+    static int audioCallback(void* outputBuffer, void* inputBuffer,
+                            unsigned int nFrames, double streamTime,
+                            RtAudioStreamStatus status, void* userData);
+
+    std::unique_ptr<RtAudio> rtaudio_;
+    RingBuffer<float> ring_buffer_;
+    std::atomic<float> input_level_;
+    std::atomic<size_t> dropped_frames_;
 };
 ```
 
+**RtAudio-Specific Implementation Notes:**
+```cpp
+// Simple device enumeration
+unsigned int devices = rtaudio.getDeviceCount();
+for (unsigned int i = 0; i < devices; i++) {
+    RtAudio::DeviceInfo info = rtaudio.getDeviceInfo(i);
+    if (info.inputChannels > 0) {
+        // Store device info
+    }
+}
+
+// Opening a stream (simpler than PortAudio)
+RtAudio::StreamParameters params;
+params.deviceId = device_id;
+params.nChannels = 1;  // Mono
+params.firstChannel = 0;
+
+rtaudio.openStream(nullptr, &params, RTAUDIO_FLOAT32,
+                   sample_rate, &buffer_size,
+                   &audioCallback, this);
+```
+
 **Testing Strategy:**
-- Unit tests with null device
-- Simulated input (sine wave generator device if available)
-- File-based playback as input
+- Unit tests with dummy/null device
+- Simulated input (if available on platform)
+- File-based playback as input (loopback testing)
 - Thread safety tests
 - Latency benchmarks
 - Stress tests (long duration, rapid start/stop)
+- Device switching tests
 
 **Integration with Application:**
 - Add mode selection: File vs Live Input
 - Device selection menu (later with Clay UI)
 - Input level meter in status bar
 - Auto-start on application launch (optional)
+- Error recovery and user feedback
+
+**Build System:**
+- Add RtAudio to CMakeLists.txt (simple - just one source file)
+- No pkg-config needed (header-only style integration)
+- Platform-specific audio APIs linked automatically
 
 ---
 
-### 5️⃣ Advanced Rendering - SDL3/GLSL Shaders (10-12 hours)
+### 4️⃣ Advanced Rendering - SDL3/GLSL Shaders (10-12 hours)
 
 **Goal:** GPU-accelerated rendering with smooth scrolling
 
@@ -293,7 +309,7 @@ void main() {
 
 ---
 
-### 6️⃣ UI Layer - Clay Integration (8-10 hours)
+### 5️⃣ UI Layer - Clay Integration (8-10 hours)
 
 **Goal:** Interactive settings panel with sliders and controls
 
@@ -362,16 +378,21 @@ void main() {
 
 ## Additional Future Enhancements
 
-### 7️⃣ Settings Persistence (2 hours)
+### 6️⃣ Settings Persistence (2 hours)
 - Save/load configuration from JSON file
 - Remember window size, position
 - Persist FFT size, frequency range, color theme
 - Recent files list
 
-### 8️⃣ Multiple Color Themes (2 hours)
+### 7️⃣ Multiple Color Themes (2 hours)
 - Add more colormaps (Viridis, Plasma, Hot, Cool)
 - Theme editor/customization
 - High-contrast mode for accessibility
+
+### 8️⃣ Screenshot Export (1-2 hours)
+- Save spectrogram view to BMP/PNG file
+- Timestamped filenames
+- Include settings metadata in image
 
 ### 9️⃣ Performance Profiling & Optimization (4 hours)
 - Profile with perf/valgrind/VTune
@@ -415,11 +436,13 @@ ctest --output-on-failure
 |---------|--------|---------|---------|
 | SDL2 | ✅ Installed | 2.30.0 | Rendering |
 | SDL2_ttf | ⚠️ **TODO** | - | Text rendering |
-| PortAudio | ✅ Installed | 19.6.0 | Audio input (not yet integrated) |
+| **RtAudio** | ⚠️ **TODO** | Latest | Real-time audio input |
 | FFTW3 | ✅ Installed | 3.3.10 | FFT processing |
 | GoogleTest | ✅ Installed | 1.14.0 | Testing |
 | Eigen3 | ✅ Installed | 3.4.0 | Math utilities |
 | Clay UI | ⚠️ **TODO** | - | UI layout |
+
+**Note:** RtAudio is preferred over PortAudio for its modern C++ API and simpler integration.
 
 ---
 
