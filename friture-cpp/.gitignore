@@ -9,12 +9,14 @@ cmake-build-*/
 *.swo
 *~
 
-# Compiled binaries
+# Compiled object files only (not source)
 *.o
 *.a
 *.so
+*.so.*
 *.dylib
 *.exe
+*.out
 
 # Test outputs
 *.bmp
