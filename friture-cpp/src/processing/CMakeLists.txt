@@ -3,6 +3,7 @@
 add_library(friture_processing
     fft_processor.cpp
     frequency_resampler.cpp
+    color_transform.cpp
 )
 
 target_include_directories(friture_processing PUBLIC

@@ -154,3 +154,40 @@ set_tests_properties(frequency_resampler_test PROPERTIES
     TIMEOUT 60
     ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
 )
+
+# ============================================================================
+# Color Transform Test
+# ============================================================================
+
+# Create color_transform test executable
+add_executable(color_transform_test color_transform_test.cpp)
+
+# Link against GoogleTest and friture_processing library
+target_link_libraries(color_transform_test
+    friture_processing
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+)
+
+# Include directories
+target_include_directories(color_transform_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Enable sanitizers for tests
+if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+    # Apply sanitizer flags
+    target_compile_options(color_transform_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(color_transform_test PRIVATE ${SANITIZER_FLAGS})
+    message(STATUS "Enabled sanitizers for color_transform_test (ASan + UBSan)")
+endif()
+
+# Register test with CTest
+add_test(NAME color_transform_test COMMAND color_transform_test)
+
+# Set test properties - longer timeout for performance benchmarks
+set_tests_properties(color_transform_test PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
+)
