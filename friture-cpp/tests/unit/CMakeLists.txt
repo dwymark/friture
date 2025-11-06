@@ -191,3 +191,40 @@ set_tests_properties(color_transform_test PROPERTIES
     TIMEOUT 60
     ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
 )
+
+# ============================================================================
+# Spectrogram Image Test
+# ============================================================================
+
+# Create spectrogram_image test executable
+add_executable(spectrogram_image_test spectrogram_image_test.cpp)
+
+# Link against GoogleTest and friture_rendering library
+target_link_libraries(spectrogram_image_test
+    friture_rendering
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+)
+
+# Include directories
+target_include_directories(spectrogram_image_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Enable sanitizers for tests
+if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+    # Apply sanitizer flags
+    target_compile_options(spectrogram_image_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(spectrogram_image_test PRIVATE ${SANITIZER_FLAGS})
+    message(STATUS "Enabled sanitizers for spectrogram_image_test (ASan + UBSan)")
+endif()
+
+# Register test with CTest
+add_test(NAME spectrogram_image_test COMMAND spectrogram_image_test)
+
+# Set test properties
+set_tests_properties(spectrogram_image_test PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
+)

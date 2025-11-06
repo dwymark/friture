@@ -1,5 +1,24 @@
 # Example programs for testing dependencies
 
+# ============================================================================
+# Pipeline Integration Test
+# ============================================================================
+
+add_executable(pipeline_test pipeline_test.cpp)
+
+target_link_libraries(pipeline_test
+    friture_processing
+    friture_rendering
+)
+
+target_include_directories(pipeline_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# ============================================================================
+# Dependency Tests
+# ============================================================================
+
 # 1. PortAudio test
 add_executable(test_portaudio test_portaudio.cpp)
 target_link_libraries(test_portaudio ${PORTAUDIO_LIBRARY} asound pthread m)
