@@ -16,19 +16,31 @@ option(USE_FFTW "Use FFTW3 for FFT" ON)
 # Find dependencies
 find_package(PkgConfig REQUIRED)
 
-# SDL2
-pkg_check_modules(SDL2 REQUIRED sdl2)
-include_directories(${SDL2_INCLUDE_DIRS})
-
-# PortAudio
-find_path(PORTAUDIO_INCLUDE_DIR portaudio.h)
-find_library(PORTAUDIO_LIBRARY portaudio)
-if(NOT PORTAUDIO_INCLUDE_DIR OR NOT PORTAUDIO_LIBRARY)
-    message(FATAL_ERROR "PortAudio not found")
+# SDL2 (optional for now - needed for rendering later)
+pkg_check_modules(SDL2 sdl2)
+if(SDL2_FOUND)
+    include_directories(${SDL2_INCLUDE_DIRS})
+    message(STATUS "SDL2 found: ${SDL2_VERSION}")
+else()
+    message(STATUS "SDL2 not found - rendering features will be unavailable")
 endif()
 
-# Eigen3
-find_package(Eigen3 REQUIRED NO_MODULE)
+# PortAudio (optional for now - needed for audio input later)
+find_path(PORTAUDIO_INCLUDE_DIR portaudio.h)
+find_library(PORTAUDIO_LIBRARY portaudio)
+if(PORTAUDIO_INCLUDE_DIR AND PORTAUDIO_LIBRARY)
+    message(STATUS "PortAudio found")
+else()
+    message(STATUS "PortAudio not found - audio input features will be unavailable")
+endif()
+
+# Eigen3 (optional - was for FFT fallback, but we use FFTW3)
+find_package(Eigen3 NO_MODULE QUIET)
+if(Eigen3_FOUND)
+    message(STATUS "Eigen3 found: ${EIGEN3_VERSION_STRING}")
+else()
+    message(STATUS "Eigen3 not found - not required for current implementation")
+endif()
 
 # FFTW3
 if(USE_FFTW)
@@ -52,11 +64,20 @@ endif()
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
-    ${PORTAUDIO_INCLUDE_DIR}
-    ${FFTW3_INCLUDE_DIR}
 )
 
+# Add optional include directories only if found
+if(PORTAUDIO_INCLUDE_DIR)
+    include_directories(${PORTAUDIO_INCLUDE_DIR})
+endif()
+
+if(FFTW3_INCLUDE_DIR)
+    include_directories(${FFTW3_INCLUDE_DIR})
+endif()
+
 # Subdirectories
+add_subdirectory(src)
+
 if(BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
