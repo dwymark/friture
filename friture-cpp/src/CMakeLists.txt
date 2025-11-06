@@ -1,4 +1,5 @@
 # Source subdirectories
+add_subdirectory(audio)
 add_subdirectory(processing)
 add_subdirectory(rendering)
 
@@ -10,6 +11,7 @@ if(SDL2_FOUND)
     )
 
     target_link_libraries(friture
+        friture_audio
         friture_processing
         friture_rendering
         ${SDL2_LIBRARIES}
