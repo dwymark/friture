@@ -1,29 +1,38 @@
 # Friture C++ Port - Implementation Roadmap
 
-**Status:** ✅ Phase 2 In Progress - FFT Processor Complete!
-**Completed:** RingBuffer + Settings + FFT Processor ✅
-**Next:** Frequency Resampler
+**Status:** ✅ Phase 2 In Progress - Frequency Resampler Complete!
+**Completed:** RingBuffer + Settings + FFT Processor + Frequency Resampler ✅
+**Next:** Color Transform (CMRMAP)
 
 ---
 
-## 🎉 Latest Achievement: FFT Processor (PR #5)
+## 🎉 Latest Achievement: Frequency Resampler (PR #6)
 
-### Performance Results - EXCEEDS TARGETS! 🚀
-- **FFT 4096**: 26.6 μs (target: <100 μs) - **4x faster than target!**
-- **FFT 8192**: 53.7 μs
-- **FFT 1024**: 6.5 μs
-- **FFT 512**: 3.1 μs
+### Performance Results - OUTSTANDING! 🚀
+- **Resample 2049 bins → 1080 pixels**: 3.0 μs (target: <10 μs) - **3.3x faster than target!**
+- **Linear scale**: 3.0 μs
+- **Mel scale**: 2.9 μs
+- **ERB scale**: 2.9 μs
+- **Log scale**: 3.1 μs
+- **Octave scale**: 3.0 μs
+
+### Features Implemented
+- ✅ All 5 frequency scales (Linear, Mel, ERB, Log, Octave)
+- ✅ Linear interpolation for smooth resampling
+- ✅ Dynamic reconfiguration (scale, range, output height)
+- ✅ Pre-computed frequency mappings
+- ✅ Headless-compatible visualization output
 
 ### Test Results
-- **20 unit tests** - ALL PASSING ✅
-- Window function validation ✅
-- Sine wave frequency detection ✅
-- Impulse response testing ✅
-- Dynamic configuration ✅
+- **25 unit tests** - ALL PASSING ✅
+- Scale transformation accuracy ✅
+- Frequency mapping validation ✅
+- Interpolation quality tests ✅
+- Dynamic reconfiguration ✅
 - Performance benchmarks ✅
 - AddressSanitizer + UBSan: Clean ✅
 
-**Total Project Tests:** 58 tests (all passing)
+**Total Project Tests:** 83 tests (all passing)
 
 ---
 
@@ -33,62 +42,57 @@
 |-------|-----------|--------|-------|-------------|
 | **Phase 1** | RingBuffer | ✅ Complete | 13/13 ✅ | 0.068 μs write ✅ |
 | **Phase 1** | Settings | ✅ Complete | 25/25 ✅ | N/A |
-| **Phase 2** | **FFT Processor** | ✅ **Complete** | **20/20 ✅** | **26.6 μs ✅** |
-| **Phase 2** | Freq Resampler | 🔜 Next | TBD | Target: <10 μs |
-| **Phase 2** | Color Transform | 📋 Planned | TBD | Target: <1 μs |
+| **Phase 2** | FFT Processor | ✅ Complete | 20/20 ✅ | 26.6 μs ✅ |
+| **Phase 2** | **Freq Resampler** | ✅ **Complete** | **25/25 ✅** | **3.0 μs ✅** |
+| **Phase 2** | Color Transform | 🔜 Next | TBD | Target: <1 μs |
 
 ---
 
-## 🎯 Next Step: Frequency Resampler (PR #6)
+## 🎯 Next Step: Color Transform (PR #7)
 
 ### Implementation Plan
 
 **Files to Create:**
 ```
-include/friture/frequency_resampler.hpp    (~200 lines)
-src/processing/frequency_resampler.cpp     (~250 lines)
-tests/unit/frequency_resampler_test.cpp    (~350 lines)
+include/friture/color_transform.hpp       (~150 lines)
+src/processing/color_transform.cpp        (~200 lines)
+tests/unit/color_transform_test.cpp       (~300 lines)
 ```
 
 **Key Features:**
-- Map FFT bins to screen pixels (vertical axis)
-- Multiple frequency scales:
-  - ✅ Linear (equal Hz spacing)
-  - ✅ Mel (perceptually linear for speech)
-  - ✅ ERB (Equivalent Rectangular Bandwidth)
-  - ✅ Logarithmic (log scale)
-  - ✅ Octave (musical, log base 2)
-- Linear interpolation for smooth resampling
-- Configurable frequency range (min_freq, max_freq)
-- Pre-computed mapping tables for performance
+- CMRMAP colormap (black→purple→red→yellow→white)
+- Fast 256-entry lookup table
+- Batch column transformation
+- Perceptually linear luminance
+- Normalize dB values to [0, 1] range
 
 **Key Algorithms:**
 
-1. **Mel Scale:**
-   ```
-   mel = 2595 * log10(1 + hz/700)
-   hz = 700 * (10^(mel/2595) - 1)
+1. **CMRMAP Generation:**
+   ```cpp
+   // Piecewise linear interpolation in RGB space
+   // 0.00 → Black  (0, 0, 0)
+   // 0.25 → Purple (0, 0, 255)
+   // 0.50 → Red    (128, 0, 128)
+   // 0.75 → Yellow (255, 128, 0)
+   // 1.00 → White  (255, 255, 255)
    ```
 
-2. **ERB Scale:**
-   ```
-   erb = 21.4 * log10(1 + hz*0.00437)
-   ```
-
-3. **Linear Interpolation:**
-   ```
-   output[i] = input[idx0] * (1-frac) + input[idx1] * frac
+2. **Fast Lookup:**
+   ```cpp
+   uint8_t idx = clamp(value * 255, 0, 255);
+   return color_lut_[idx];  // O(1) lookup
    ```
 
 **Test Coverage:**
-- Scale transformations (Mel, ERB, Log, Octave, Linear)
-- Frequency mapping accuracy
-- Interpolation quality
-- Edge cases (DC, Nyquist)
+- LUT generation accuracy
+- Color value correctness
+- Monotonic luminance
+- Batch transformation
 - Performance benchmarks
-- Dynamic reconfiguration
+- Edge cases (NaN, Inf, out-of-range)
 
-**Performance Target:** <10 μs per column
+**Performance Target:** <1 μs per 1080-pixel column
 
 ---
 
@@ -174,6 +178,16 @@ make ringbuffer_test settings_test fft_processor_test -j4
 
 ## ✅ Recent Completions
 
+### PR #6: Frequency Resampler (2025-11-06) ✅
+- All 5 frequency scales (Linear, Mel, ERB, Log, Octave)
+- Linear interpolation for smooth resampling
+- Pre-computed frequency mappings
+- Dynamic reconfiguration
+- 25 comprehensive tests
+- Performance: 3.0 μs (target: <10 μs) - 3.3x faster!
+- Headless-compatible visualization
+- All sanitizers clean
+
 ### PR #5: FFT Processor (2025-11-06) ✅
 - Window functions (Hann, Hamming)
 - FFTW3 integration
@@ -197,7 +211,7 @@ make ringbuffer_test settings_test fft_processor_test -j4
 ---
 
 **Last Updated:** 2025-11-06
-**Phase 2 Status:** In Progress (1/3 components complete)
-**Next Milestone:** Frequency Resampler implementation
-**Total Tests:** 58 tests (all passing)
+**Phase 2 Status:** In Progress (2/3 components complete)
+**Next Milestone:** Color Transform (CMRMAP) implementation
+**Total Tests:** 83 tests (all passing)
 **Build Status:** ✅ All tests passing with sanitizers enabled

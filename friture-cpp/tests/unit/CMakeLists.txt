@@ -117,3 +117,40 @@ set_tests_properties(fft_processor_test PROPERTIES
     TIMEOUT 60
     ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
 )
+
+# ============================================================================
+# Frequency Resampler Test
+# ============================================================================
+
+# Create frequency_resampler test executable
+add_executable(frequency_resampler_test frequency_resampler_test.cpp)
+
+# Link against GoogleTest and friture_processing library
+target_link_libraries(frequency_resampler_test
+    friture_processing
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+)
+
+# Include directories
+target_include_directories(frequency_resampler_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Enable sanitizers for tests
+if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+    # Apply sanitizer flags
+    target_compile_options(frequency_resampler_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(frequency_resampler_test PRIVATE ${SANITIZER_FLAGS})
+    message(STATUS "Enabled sanitizers for frequency_resampler_test (ASan + UBSan)")
+endif()
+
+# Register test with CTest
+add_test(NAME frequency_resampler_test COMMAND frequency_resampler_test)
+
+# Set test properties - longer timeout for performance benchmarks and visualization
+set_tests_properties(frequency_resampler_test PROPERTIES
+    TIMEOUT 60
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
+)
