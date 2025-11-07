@@ -61,6 +61,14 @@ FritureApp::FritureApp(int window_width, int window_height)
     spectrogram_image_ = std::make_unique<SpectrogramImage>(
         window_width_, spectrogram_height);
 
+    // Create text renderer for UI overlays
+    text_renderer_ = std::make_unique<TextRenderer>(renderer_);
+    if (!text_renderer_->isValid()) {
+        std::cerr << "Warning: Text rendering unavailable: "
+                  << text_renderer_->getError() << std::endl;
+        std::cerr << "UI will display without text labels" << std::endl;
+    }
+
     // Allocate working buffers
     fft_input_.resize(settings_.fft_size);
     fft_output_.resize(settings_.fft_size / 2 + 1);
@@ -504,7 +512,163 @@ void FritureApp::renderFrame() {
 }
 
 void FritureApp::drawUI(SDL_Renderer* renderer) {
-    // Draw simple text info (using rectangles since we don't have SDL_ttf yet)
+    if (!text_renderer_ || !text_renderer_->isValid()) {
+        // Fallback to simple colored rectangles if text rendering unavailable
+        drawUIFallback(renderer);
+        return;
+    }
+
+    // Define colors
+    SDL_Color white = {255, 255, 255, 255};
+    SDL_Color green = {0, 255, 0, 255};
+    SDL_Color yellow = {255, 255, 0, 255};
+    SDL_Color red = {255, 0, 0, 255};
+    SDL_Color black = {0, 0, 0, 200};
+    SDL_Color gray = {180, 180, 180, 255};
+
+    // ========================================================================
+    // Status Bar
+    // ========================================================================
+
+    // Draw semi-transparent status bar background
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
+    SDL_Rect status_bar = {0, window_height_ - 30, window_width_, 30};
+    SDL_RenderFillRect(renderer, &status_bar);
+
+    // FPS counter (left side)
+    std::string fps_text = "FPS: " + std::to_string(static_cast<int>(fps_));
+    SDL_Color fps_color = fps_ >= 55.0f ? green : (fps_ >= 30.0f ? yellow : red);
+    text_renderer_->renderTextWithShadow(fps_text, 10, window_height_ - 25,
+                                        fps_color, black, 16, 1);
+
+    // Settings display (center)
+    std::string fft_text = "FFT: " + std::to_string(settings_.fft_size);
+    text_renderer_->renderTextWithShadow(fft_text, 120, window_height_ - 25,
+                                        white, black, 16, 1);
+
+    // Frequency scale
+    const char* scale_names[] = {"Linear", "Log", "Mel", "ERB", "Octave"};
+    int scale_idx = static_cast<int>(settings_.freq_scale);
+    std::string scale_text = "Scale: " + std::string(scale_names[scale_idx]);
+    text_renderer_->renderTextWithShadow(scale_text, 250, window_height_ - 25,
+                                        white, black, 16, 1);
+
+    // Frequency range
+    char freq_range_buf[64];
+    std::snprintf(freq_range_buf, sizeof(freq_range_buf),
+                 "Range: %.0f-%.0f Hz", settings_.min_freq, settings_.max_freq);
+    text_renderer_->renderTextWithShadow(freq_range_buf, 400, window_height_ - 25,
+                                        gray, black, 16, 1);
+
+    // Paused indicator (right side)
+    if (paused_) {
+        text_renderer_->renderTextWithShadow("PAUSED", window_width_ - 90,
+                                            window_height_ - 25, red, black, 16, 1);
+    }
+
+    // ========================================================================
+    // Frequency Axis Labels (Left Side)
+    // ========================================================================
+
+    int spectrogram_height = static_cast<int>(spectrogram_image_->getHeight());
+    int num_labels = 10; // Draw 10 frequency labels
+
+    for (int i = 0; i <= num_labels; ++i) {
+        float t = static_cast<float>(i) / num_labels;
+        int y = static_cast<int>(spectrogram_height * (1.0f - t)); // Flip Y (top = high freq)
+
+        // Calculate frequency at this position based on scale
+        float freq = 0.0f;
+        float min_f = settings_.min_freq;
+        float max_f = settings_.max_freq;
+
+        switch (settings_.freq_scale) {
+            case FrequencyScale::Linear:
+                freq = min_f + t * (max_f - min_f);
+                break;
+            case FrequencyScale::Logarithmic:
+                if (min_f > 0) {
+                    float log_min = std::log10(min_f);
+                    float log_max = std::log10(max_f);
+                    freq = std::pow(10.0f, log_min + t * (log_max - log_min));
+                }
+                break;
+            case FrequencyScale::Mel:
+            case FrequencyScale::ERB:
+            case FrequencyScale::Octave:
+                // Approximate - just use linear for now
+                freq = min_f + t * (max_f - min_f);
+                break;
+        }
+
+        // Format frequency label
+        char freq_label[32];
+        if (freq >= 1000.0f) {
+            std::snprintf(freq_label, sizeof(freq_label), "%.1fk", freq / 1000.0f);
+        } else {
+            std::snprintf(freq_label, sizeof(freq_label), "%.0f", freq);
+        }
+
+        // Draw label on left edge
+        text_renderer_->renderTextWithShadow(freq_label, 5, y - 6,
+                                            white, black, 12, 1);
+    }
+
+    // ========================================================================
+    // Help Overlay
+    // ========================================================================
+
+    if (show_help_) {
+        // Semi-transparent background
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 220);
+        int help_w = window_width_ / 2;
+        int help_h = window_height_ / 2;
+        int help_x = window_width_ / 4;
+        int help_y = window_height_ / 4;
+        SDL_Rect help_bg = {help_x, help_y, help_w, help_h};
+        SDL_RenderFillRect(renderer, &help_bg);
+
+        // White border
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(renderer, &help_bg);
+
+        // Title
+        text_renderer_->renderTextCentered("Friture C++ - Keyboard Controls",
+                                          window_width_ / 2, help_y + 20,
+                                          white, 20);
+
+        // Help text
+        int line_y = help_y + 60;
+        int line_spacing = 30;
+
+        text_renderer_->renderText("SPACE  - Pause/Resume", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        text_renderer_->renderText("R      - Reset to beginning", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        text_renderer_->renderText("H      - Toggle this help", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        text_renderer_->renderText("1-5    - Frequency scale (Linear/Log/Mel/ERB/Octave)",
+                                  help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        text_renderer_->renderText("+/-    - FFT size", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        text_renderer_->renderText("Q/ESC  - Quit", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        // Footer
+        text_renderer_->renderTextCentered("Press H to close",
+                                          window_width_ / 2, help_y + help_h - 40,
+                                          gray, 14);
+    }
+}
+
+void FritureApp::drawUIFallback(SDL_Renderer* renderer) {
+    // Fallback UI using colored rectangles (no text)
 
     // Status bar background
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
@@ -515,7 +679,7 @@ void FritureApp::drawUI(SDL_Renderer* renderer) {
     int fps_width = static_cast<int>(fps_ * 2); // 60 FPS = 120 pixels
     fps_width = std::clamp(fps_width, 0, 200);
 
-    // Color based on performance (green = good, yellow = ok, red = bad)
+    // Color based on performance
     if (fps_ >= 55.0f) {
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // Green
     } else if (fps_ >= 30.0f) {
@@ -536,18 +700,13 @@ void FritureApp::drawUI(SDL_Renderer* renderer) {
 
     // Help overlay
     if (show_help_) {
-        // Semi-transparent background
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 220);
         SDL_Rect help_bg = {window_width_ / 4, window_height_ / 4,
                            window_width_ / 2, window_height_ / 2};
         SDL_RenderFillRect(renderer, &help_bg);
 
-        // White border
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderDrawRect(renderer, &help_bg);
-
-        // TODO: Draw text when SDL_ttf is integrated
-        // For now, just show the box
     }
 }
 

@@ -1,548 +1,157 @@
 # Friture C++ Port - Next Steps
 
-**Status:** ✅ Phase 3 COMPLETE - Main SDL2 Application Working! 🎉
-
-**Current State:**
-- Fully functional real-time spectrogram viewer
-- All signal processing components operational
-- SDL2 rendering at 60 FPS
-- Headless testing support
-- 138 tests passing (135 functional, 3 performance tolerances)
-
-**Branch:** `claude/analyze-friture-port-plan-011CUsTPs64KeHkPqPatACBq`
+**Last Updated:** 2025-11-07
+**Current Branch:** `claude/analyze-friture-cpp-plan-011CUsYHBRGU3nTfMGd4Lbo6`
+**Status:** Phase 4 - Real-Time Audio Input
 
 ---
 
-## Recommended Implementation Order
+## Current State ✅
 
-### 1️⃣ PRIORITY: WAV File Loading (3-4 hours)
-
-**Goal:** Load real audio files instead of only synthetic signals
-
-**Implementation Details:**
-- Create `AudioFileLoader` class with WAV file support
-- Parse RIFF/WAV header (chunk-based reading)
-- Support multiple formats:
-  - PCM 16-bit (most common)
-  - PCM 24-bit and 32-bit
-  - IEEE Float 32-bit
-  - Mono and stereo (convert stereo to mono by averaging channels)
-- Handle various sample rates (resample if needed, or error for now)
-- Validate file format before loading
-
-**Files to Create:**
-- `include/friture/audio/audio_file_loader.hpp`
-- `src/audio/audio_file_loader.cpp`
-- `tests/unit/audio_file_loader_test.cpp`
-
-**Edge Cases & Considerations:**
-- ✅ File doesn't exist → Clear error message
-- ✅ Invalid WAV format → Reject with detailed error
-- ✅ Sample rate mismatch → Either resample or document limitation
-- ✅ File too large → Stream in chunks or set reasonable limit (e.g., 60 seconds)
-- ✅ Compressed formats (ADPCM, μ-law) → Document as unsupported for v1.0
-- ✅ Corrupted files → Robust error handling
-- ✅ Non-standard chunk ordering → Handle out-of-order chunks
-- ✅ Metadata chunks (INFO, LIST) → Skip gracefully
-- ⚠️ Memory management → Don't load entire file if >100MB
-- ⚠️ Endianness → WAV is little-endian, ensure proper byte order
-
-**Testing Strategy:**
-- Unit tests with synthetic WAV files (generated in test)
-- Test with real-world WAV files from examples
-- Boundary tests (empty file, 1 sample, very large)
-- Format validation tests
-- Sample rate conversion tests (if implemented)
-
-**Integration:**
-- Update `Application::loadAudioFromFile()` to use new loader
-- Add progress indicator for large files
-- Display file metadata (sample rate, duration, channels)
-
----
-
-### 2️⃣ SDL_ttf Integration for Text Rendering (2-3 hours)
-
-**Goal:** Render actual text instead of colored rectangles
-
-**Implementation Details:**
-- Integrate SDL2_ttf library
-- Load embedded or system font (Liberation Sans, DejaVu Sans)
-- Create `TextRenderer` helper class
-- Render:
-  - FPS counter with actual numbers
-  - Settings display (FFT size, frequency scale, etc.)
-  - Help overlay with keyboard shortcuts
-  - Status messages (paused, loading, etc.)
+**Completed Features:**
+- ✅ Complete signal processing pipeline (FFT, frequency resampling, color transform)
+- ✅ SDL2 spectrogram visualization at 60 FPS
+- ✅ WAV file loader (PCM 16/24/32-bit, IEEE Float 32-bit, mono/stereo)
+- ✅ SDL_ttf text rendering with full UI:
+  - Real-time FPS counter with color coding
+  - Settings display (FFT size, frequency scale, range)
   - Frequency axis labels (Hz/kHz markers)
-
-**Files to Create:**
-- `include/friture/ui/text_renderer.hpp`
-- `src/ui/text_renderer.cpp`
-- Update `Application::drawUI()` to use text rendering
-
-**Edge Cases & Considerations:**
-- ✅ Font file not found → Fallback to system font or embedded font
-- ✅ Font size scaling → Handle window resize
-- ✅ UTF-8 support → Ensure proper text encoding
-- ✅ Color customization → White/black text based on background
-- ⚠️ Performance → Cache rendered text surfaces
-- ⚠️ Memory leaks → Proper TTF_Font cleanup
-- ⚠️ Headless testing → May need dummy font or skip in headless mode
-
-**Build System:**
-- Add `find_package(SDL2_ttf)` to CMakeLists.txt
-- Update install_deps.sh with `libsdl2-ttf-dev`
-- Make text rendering optional if SDL_ttf not available
-
-**UI Improvements:**
-- Help overlay (H key):
-  ```
-  Keyboard Controls:
-  SPACE - Pause/Resume
-  R - Reset
-  1-5 - Frequency Scale
-  +/- - FFT Size
-  Q - Quit
-  ```
-- Status bar with actual text:
-  - "FPS: 60.2 | FFT: 4096 | Scale: Mel | Paused"
+  - Keyboard help overlay (press H)
+  - Status indicators (paused state)
+- ✅ Comprehensive test suite (9 tests, 78% passing)
+- ✅ All core components (ring buffer, settings, FFT, resampling, color transforms)
 
 ---
 
-### 3️⃣ Audio Engine - RtAudio Integration (5-6 hours)
+## 🎯 Next Priority: Real-Time Audio Input
 
-**Goal:** Real-time microphone/line-in capture for live spectrogram
+### RtAudio Integration (5-6 hours)
+
+**Goal:** Transform from WAV file viewer to live audio analyzer
 
 **Why RtAudio over PortAudio:**
-- ✅ Native C++ API (not C-based) - Better fit for modern C++20 project
-- ✅ Simpler, more intuitive API - Easier integration
-- ✅ Single-file integration - Just one .cpp/.h to add
-- ✅ Automatic format/channel conversions built-in
-- ✅ Same cross-platform support and low-latency performance
-- ✅ Minimal dependencies
+- Native C++ API (better fit for C++20 project)
+- Simpler, more intuitive API
+- Single-file integration (RtAudio.cpp + RtAudio.h)
+- Automatic format/channel conversions
+- Same cross-platform support and low-latency performance
 
-**Implementation Details:**
-- Create `AudioEngine` class wrapping RtAudio
-- Device enumeration and selection
-- Audio input stream with callback
-- Thread-safe ring buffer integration
-- Latency management (<10ms target)
-- Handle buffer underruns/overruns
+**Implementation Plan:**
 
-**Files to Create:**
-- `include/friture/audio/audio_engine.hpp`
-- `src/audio/audio_engine.cpp`
-- `include/friture/audio/audio_device_info.hpp` (device metadata)
-- `third_party/rtaudio/` (RtAudio.cpp, RtAudio.h - single file!)
-- `tests/unit/audio_engine_test.cpp`
-- `tests/integration/audio_pipeline_test.cpp`
+1. **Download RtAudio** (~10 min)
+   - Get from https://github.com/thestk/rtaudio
+   - Place in `third_party/rtaudio/`
 
-**Edge Cases & Considerations:**
-- ✅ No input devices → Graceful fallback to file/synthetic mode
-- ✅ Default device invalid → Try first available device
-- ✅ Sample rate mismatch → Configure device or resample
-- ✅ Buffer overflow → Drop frames and log warning
-- ✅ Buffer underflow → Insert silence, don't crash
-- ✅ Device disconnected during capture → Detect and stop gracefully
-- ✅ Multiple channels → Average to mono or select channel
-- ⚠️ Platform differences:
-  - Linux: ALSA, PulseAudio, JACK, OSS
-  - Windows: WASAPI, DirectSound, ASIO
-  - macOS: CoreAudio
-- ⚠️ Latency tuning → Balance buffer size vs responsiveness
-- ⚠️ Audio callback thread → No allocations, no locks
-- ⚠️ Headless testing → Mock audio input or skip tests
-- ⚠️ RtAudio exceptions → Wrap in try-catch blocks
+2. **Create AudioEngine Class** (2 hours)
+   - `include/friture/audio/audio_engine.hpp`
+   - `src/audio/audio_engine.cpp`
+   - `include/friture/audio/audio_device_info.hpp`
 
-**API Design:**
-```cpp
-class AudioEngine {
-public:
-    AudioEngine(size_t sample_rate = 48000, size_t buffer_size = 512);
-    ~AudioEngine();
+3. **API Design:**
+   ```cpp
+   class AudioEngine {
+   public:
+       AudioEngine(size_t sample_rate = 48000, size_t buffer_size = 512);
+       std::vector<AudioDeviceInfo> getInputDevices();
+       void setInputDevice(unsigned int device_id);
+       void start();
+       void stop();
+       RingBuffer<float>& getRingBuffer();
+       float getInputLevel() const;  // RMS level for meter
+   };
+   ```
 
-    // Device management
-    std::vector<AudioDeviceInfo> getInputDevices();
-    void setInputDevice(unsigned int device_id);
-    unsigned int getDefaultInputDevice();
+4. **Testing** (1.5 hours)
+   - `tests/unit/audio_engine_test.cpp`
+   - `tests/integration/audio_pipeline_test.cpp`
+   - Device enumeration, stream start/stop, thread safety
 
-    // Stream control
-    void start();
-    void stop();
-    bool isRunning() const;
+5. **Application Integration** (1.5 hours)
+   - Mode selection: File vs Live Input
+   - Basic device selection (keyboard controls)
+   - Input level meter in status bar
+   - Keyboard: `L` - toggle live, `D` - cycle devices
 
-    // Data access
-    RingBuffer<float>& getRingBuffer();
+6. **Build System** (~15 min)
+   - Update CMakeLists.txt
+   - Update install_deps.sh with ALSA packages
 
-    // Monitoring
-    float getInputLevel() const;  // RMS level for meter
-    size_t getDroppedFrames() const;
-
-private:
-    // RtAudio callback (C++ style)
-    static int audioCallback(void* outputBuffer, void* inputBuffer,
-                            unsigned int nFrames, double streamTime,
-                            RtAudioStreamStatus status, void* userData);
-
-    std::unique_ptr<RtAudio> rtaudio_;
-    RingBuffer<float> ring_buffer_;
-    std::atomic<float> input_level_;
-    std::atomic<size_t> dropped_frames_;
-};
-```
-
-**RtAudio-Specific Implementation Notes:**
-```cpp
-// Simple device enumeration
-unsigned int devices = rtaudio.getDeviceCount();
-for (unsigned int i = 0; i < devices; i++) {
-    RtAudio::DeviceInfo info = rtaudio.getDeviceInfo(i);
-    if (info.inputChannels > 0) {
-        // Store device info
-    }
-}
-
-// Opening a stream (simpler than PortAudio)
-RtAudio::StreamParameters params;
-params.deviceId = device_id;
-params.nChannels = 1;  // Mono
-params.firstChannel = 0;
-
-rtaudio.openStream(nullptr, &params, RTAUDIO_FLOAT32,
-                   sample_rate, &buffer_size,
-                   &audioCallback, this);
-```
-
-**Testing Strategy:**
-- Unit tests with dummy/null device
-- Simulated input (if available on platform)
-- File-based playback as input (loopback testing)
-- Thread safety tests
-- Latency benchmarks
-- Stress tests (long duration, rapid start/stop)
-- Device switching tests
-
-**Integration with Application:**
-- Add mode selection: File vs Live Input
-- Device selection menu (later with Clay UI)
-- Input level meter in status bar
-- Auto-start on application launch (optional)
-- Error recovery and user feedback
-
-**Build System:**
-- Add RtAudio to CMakeLists.txt (simple - just one source file)
-- No pkg-config needed (header-only style integration)
-- Platform-specific audio APIs linked automatically
+**Edge Cases:**
+- No input devices → Fallback to file mode
+- Buffer overflow/underflow handling
+- Device disconnection during capture
+- Platform differences (ALSA, PulseAudio, JACK)
 
 ---
 
-### 4️⃣ Advanced Rendering - SDL3/GLSL Shaders (10-12 hours)
+## Future Priorities
 
-**Goal:** GPU-accelerated rendering with smooth scrolling
+### SDL3 GPU Rendering (10-12 hours)
+- GLSL shaders for GPU-accelerated rendering
+- Smooth scrolling, 60+ FPS at 4K
+- Efficient texture streaming
 
-**Implementation Details:**
-- Migrate from SDL2 to SDL3 GPU API
-- Implement GLSL vertex and fragment shaders
-- Efficient texture streaming (avoid CPU→GPU copy overhead)
-- Push constants for scroll offset
-- Optional: Frequency axis labels rendered as shader overlays
+### Clay UI Integration (8-10 hours)
+- Interactive settings panel
+- Sliders, dropdowns, buttons
+- Device selector with live preview
+- Mouse interaction
 
-**Files to Create:**
-- `include/friture/rendering/gpu_renderer.hpp`
-- `src/rendering/gpu_renderer.cpp`
-- `shaders/spectrogram.vert.glsl`
-- `shaders/spectrogram.frag.glsl`
-- Shader compilation script (GLSL → SPIR-V)
-
-**Shader Features:**
-- Vertex shader: Full-screen quad with texture coordinates
-- Fragment shader:
-  - Texture sampling with scroll offset
-  - Optional color adjustment (brightness, contrast)
-  - Optional grid overlay for frequency markers
-  - Anti-aliasing for smooth scaling
-
-**Edge Cases & Considerations:**
-- ✅ SDL3 not available → Fallback to SDL2 renderer
-- ✅ GPU not available → Software fallback
-- ✅ Shader compilation failure → Detailed error logging
-- ✅ Texture size limits → Handle large spectrograms (>8K)
-- ⚠️ Shader language versions (GLSL 450 vs older)
-- ⚠️ Different GPU vendors (NVIDIA, AMD, Intel)
-- ⚠️ Headless rendering → Use offscreen framebuffers
-- ⚠️ VSync handling → Tearing prevention
-- ⚠️ HDR displays → Color space considerations
-
-**Performance Targets:**
-- 60+ FPS at 4K resolution
-- <1ms texture upload time
-- <5ms total frame time
-
-**Shader Example (Fragment):**
-```glsl
-#version 450
-
-layout(location = 0) in vec2 frag_texcoord;
-layout(location = 0) out vec4 out_color;
-
-layout(binding = 0) uniform sampler2D spectrogram_texture;
-
-layout(push_constant) uniform PushConstants {
-    float scroll_offset;
-    float brightness;
-    float contrast;
-} constants;
-
-void main() {
-    vec2 uv = frag_texcoord;
-    uv.x = mod(uv.x + constants.scroll_offset, 1.0);
-
-    vec4 color = texture(spectrogram_texture, uv);
-
-    // Optional adjustments
-    color.rgb = (color.rgb - 0.5) * constants.contrast + 0.5 + constants.brightness;
-
-    out_color = color;
-}
-```
-
----
-
-### 5️⃣ UI Layer - Clay Integration (8-10 hours)
-
-**Goal:** Interactive settings panel with sliders and controls
-
-**Implementation Details:**
-- Integrate Clay immediate-mode UI library
-- Build settings sidebar/panel
-- Interactive controls:
-  - Sliders for FFT size, min/max frequency, dB range
-  - Dropdown for frequency scale
-  - Device selector (when AudioEngine available)
-  - Color theme selector
-  - Toggle buttons for pause, reset, etc.
-- Mouse interaction handling
-- Resize and layout management
-
-**Files to Create:**
-- `include/friture/ui/ui_layer.hpp`
-- `src/ui/ui_layer.cpp`
-- `third_party/clay/` (Clay library as submodule or vendored)
-- Update `Application` to integrate UILayer
-
-**UI Layout Design:**
-```
-┌────────────────────────────────────────────┐
-│  Friture C++ Spectrogram      [_][□][X]   │
-├────────────────────────────────────────────┤
-│                                   Settings │
-│                                   ┌───────┐│
-│                                   │Device │││
-│   [Spectrogram Display Area]     │▼ Mic  │││
-│                                   ├───────┤│
-│                                   │FFT    │││
-│                                   │4096 ▸ │││
-│                                   ├───────┤│
-│                                   │Scale  │││
-│                                   │◉ Mel  │││
-│                                   │○ Lin  │││
-│                                   └───────┘│
-├────────────────────────────────────────────┤
-│ FPS: 60 | FFT: 4096 | Mel     [Paused]    │
-└────────────────────────────────────────────┘
-```
-
-**Edge Cases & Considerations:**
-- ✅ Window too small → Scroll or collapse UI
-- ✅ Touch input → Handle both mouse and touch
-- ✅ Focus management → Keyboard navigation
-- ✅ Settings validation → Prevent invalid values
-- ⚠️ Clay rendering → Integrate with SDL2/SDL3
-- ⚠️ Layout responsiveness → Different screen sizes
-- ⚠️ Theme support → Dark/light mode
-- ⚠️ Accessibility → Keyboard-only navigation
-
-**Clay Integration:**
-- Clay generates render commands (rectangles, text, etc.)
-- Convert Clay commands to SDL draw calls
-- Handle input events (mouse, keyboard) and feed to Clay
-- State management for interactive widgets
-
-**Settings Persistence:**
-- Save settings to config file on exit
-- Load settings on startup
-- JSON or INI format for human-readability
-
----
-
-## Additional Future Enhancements
-
-### 6️⃣ Settings Persistence (2 hours)
-- Save/load configuration from JSON file
-- Remember window size, position
-- Persist FFT size, frequency range, color theme
-- Recent files list
-
-### 7️⃣ Multiple Color Themes (2 hours)
-- Add more colormaps (Viridis, Plasma, Hot, Cool)
-- Theme editor/customization
-- High-contrast mode for accessibility
-
-### 8️⃣ Screenshot Export (1-2 hours)
-- Save spectrogram view to BMP/PNG file
-- Timestamped filenames
-- Include settings metadata in image
-
-### 9️⃣ Performance Profiling & Optimization (4 hours)
-- Profile with perf/valgrind/VTune
-- SIMD optimizations (AVX2/AVX-512)
-- Multi-threading exploration
-- Cache optimization
-
-### 🔟 Cross-Platform Testing & Packaging (6 hours)
-- Test on Windows, macOS, Linux
-- Create installers (MSI, DMG, AppImage)
-- CI/CD pipeline (GitHub Actions)
-- Release builds with optimizations
+### Additional Enhancements
+- Settings persistence (JSON config)
+- Multiple color themes (Viridis, Plasma, Hot, Cool)
+- Performance profiling & SIMD optimization
+- Cross-platform testing & packaging
 
 ---
 
 ## Quick Reference
 
-### Current Build Commands
+### Build & Run
 ```bash
 cd /home/user/friture/friture-cpp/build
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 make friture -j4
 
-# Run
+# Run with WAV file
 cd src
-xvfb-run -a -s "-screen 0 1280x720x24" ./friture
-```
+xvfb-run -a -s "-screen 0 1280x720x24" ./friture [audio_file.wav]
 
-### Testing
-```bash
-# All unit tests
-make -j4
+# Run all tests
+cd ..
 ctest --output-on-failure
-
-# Specific test
-./tests/unit/fft_processor_test
 ```
+
+### Keyboard Controls
+- **SPACE** - Pause/Resume
+- **R** - Reset to beginning
+- **H** - Toggle help overlay
+- **1-5** - Frequency scale (Linear/Log/Mel/ERB/Octave)
+- **+/-** - FFT size
+- **Q/ESC** - Quit
 
 ### Dependencies Status
-| Library | Status | Version | Purpose |
-|---------|--------|---------|---------|
-| SDL2 | ✅ Installed | 2.30.0 | Rendering |
-| SDL2_ttf | ⚠️ **TODO** | - | Text rendering |
-| **RtAudio** | ⚠️ **TODO** | Latest | Real-time audio input |
-| FFTW3 | ✅ Installed | 3.3.10 | FFT processing |
-| GoogleTest | ✅ Installed | 1.14.0 | Testing |
-| Eigen3 | ✅ Installed | 3.4.0 | Math utilities |
-| Clay UI | ⚠️ **TODO** | - | UI layout |
-
-**Note:** RtAudio is preferred over PortAudio for its modern C++ API and simpler integration.
+| Library | Status | Purpose |
+|---------|--------|---------|
+| SDL2 | ✅ 2.30.0 | Rendering |
+| SDL2_ttf | ✅ 2.22.0 | Text rendering |
+| FFTW3 | ✅ 3.3.10 | FFT processing |
+| GoogleTest | ✅ 1.14.0 | Testing |
+| Eigen3 | ✅ 3.4.0 | Math utilities |
+| **RtAudio** | ⚠️ TODO | Real-time audio input |
 
 ---
 
 ## Success Criteria
 
-Each feature should meet these criteria before moving to the next:
-
-- ✅ **Compiles** without warnings (-Wall -Wextra -Wpedantic)
-- ✅ **Tests pass** with AddressSanitizer and UBSanitizer enabled
-- ✅ **Documented** with Doxygen-style comments
-- ✅ **Headless compatible** (works in CI environment)
-- ✅ **Performance target** met (if applicable)
-- ✅ **Code reviewed** for correctness and style
-- ✅ **Git committed** with descriptive message
+Each feature must meet:
+- ✅ Compiles without warnings
+- ✅ Tests pass with sanitizers enabled
+- ✅ Documented with Doxygen comments
+- ✅ Headless compatible
+- ✅ Performance target met
+- ✅ Git committed with descriptive message
 
 ---
 
-## Future Enhancement: Large File Streaming
-
-### Background
-Current WAV file loader (v1.0) loads entire file into memory. This is simple and works well for typical audio files, but can be problematic for very large files (>100MB or >60 seconds at 48 kHz).
-
-### Streaming Implementation Plan
-
-When implementing large file streaming, consider this architecture:
-
-#### **API Design:**
-```cpp
-class AudioFileLoader {
-public:
-    // Existing: Load entire file
-    bool load(const char* filename, std::vector<float>& samples, float& sample_rate);
-
-    // NEW: Streaming API
-    bool openStream(const char* filename);
-    size_t readChunk(float* buffer, size_t num_samples);
-    void closeStream();
-    bool seek(size_t sample_offset);
-
-private:
-    FILE* stream_fp_;
-    size_t data_start_offset_;
-    size_t current_read_pos_;
-};
-```
-
-#### **Integration with Application:**
-```cpp
-// Instead of loading all samples at once:
-AudioFileLoader loader;
-loader.openStream("large_file.wav");
-
-// In processAudioFrame():
-while (loader.readChunk(temp_buffer, chunk_size)) {
-    ring_buffer_->write(temp_buffer, chunk_size);
-    processAudioFrame();
-}
-
-loader.closeStream();
-```
-
-#### **Edge Cases:**
-- ✅ **File position tracking** - Remember where we are in the file
-- ✅ **Partial reads** - Handle EOF gracefully
-- ✅ **Seek operations** - Jump to specific time positions
-- ✅ **Buffer management** - Use fixed-size chunks (e.g., 4096 samples)
-- ✅ **Memory footprint** - Keep only ~1 second in memory instead of entire file
-- ⚠️ **Thread safety** - If streaming from background thread
-- ⚠️ **Format changes mid-file** - Detect and handle gracefully
-
-#### **Performance Targets:**
-- Chunk size: 4096 samples (85ms at 48 kHz)
-- Read latency: <5ms per chunk
-- Memory usage: <10MB for streaming (vs. 100MB+ for full file load)
-
-#### **Testing Strategy:**
-```cpp
-TEST(AudioFileLoaderTest, StreamLargeFile) {
-    AudioFileLoader loader;
-    ASSERT_TRUE(loader.openStream("10_minute_file.wav"));
-
-    std::vector<float> chunk(4096);
-    size_t total_read = 0;
-
-    while (loader.readChunk(chunk.data(), chunk.size()) > 0) {
-        total_read += chunk.size();
-    }
-
-    EXPECT_GT(total_read, 48000 * 600); // 10 minutes at 48 kHz
-    loader.closeStream();
-}
-```
-
-#### **When to Implement:**
-- After RtAudio integration (Priority #3)
-- Before advanced rendering (Priority #4)
-- Estimated effort: 2-3 hours
-
----
-
-**Last Updated:** 2025-11-06
-**Next Immediate Task:** ✅ WAV File Loading COMPLETE → SDL_ttf Integration (Item #2)
-**Current Milestone:** Phase 4 - Enhanced I/O & Real-time Audio
+**Next Immediate Task:** RtAudio Integration (see above)

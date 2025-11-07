@@ -2,6 +2,7 @@
 add_subdirectory(audio)
 add_subdirectory(processing)
 add_subdirectory(rendering)
+add_subdirectory(ui)
 
 # Main application executable
 if(SDL2_FOUND)
@@ -14,7 +15,9 @@ if(SDL2_FOUND)
         friture_audio
         friture_processing
         friture_rendering
+        friture_ui
         ${SDL2_LIBRARIES}
+        SDL2_ttf
     )
 
     message(STATUS "Main application 'friture' configured")

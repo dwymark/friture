@@ -19,6 +19,7 @@
 #include <friture/frequency_resampler.hpp>
 #include <friture/color_transform.hpp>
 #include <friture/spectrogram_image.hpp>
+#include <friture/ui/text_renderer.hpp>
 
 #include <SDL2/SDL.h>
 #include <memory>
@@ -149,6 +150,14 @@ private:
     void drawUI(SDL_Renderer* renderer);
 
     /**
+     * @brief Draw UI fallback without text (colored rectangles)
+     * @param renderer SDL renderer
+     *
+     * Used when text rendering is unavailable
+     */
+    void drawUIFallback(SDL_Renderer* renderer);
+
+    /**
      * @brief Handle keyboard input
      * @param event SDL keyboard event
      */
@@ -196,6 +205,7 @@ private:
     std::unique_ptr<FrequencyResampler> freq_resampler_;
     std::unique_ptr<ColorTransform> color_transform_;
     std::unique_ptr<SpectrogramImage> spectrogram_image_;
+    std::unique_ptr<TextRenderer> text_renderer_;
 
     // ========================================================================
     // Temporary Buffers (reused each frame)
