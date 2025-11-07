@@ -20,6 +20,7 @@
 #include <friture/color_transform.hpp>
 #include <friture/spectrogram_image.hpp>
 #include <friture/ui/text_renderer.hpp>
+#include <friture/audio/audio_engine.hpp>
 
 #include <SDL2/SDL.h>
 #include <memory>
@@ -110,6 +111,28 @@ public:
      */
     bool isRunning() const { return running_; }
 
+    /**
+     * @brief Switch to live microphone input mode
+     *
+     * Starts AudioEngine if not running. Gracefully handles
+     * case where no audio devices are available.
+     */
+    void switchToLiveMode();
+
+    /**
+     * @brief Switch to file playback mode
+     *
+     * Stops AudioEngine if running.
+     */
+    void switchToFileMode();
+
+    /**
+     * @brief Cycle through available input devices
+     *
+     * Only effective in live mode or when preparing to enter live mode.
+     */
+    void cycleInputDevice();
+
 private:
     /**
      * @brief Initialize SDL2 components
@@ -174,10 +197,19 @@ private:
     // Settings and State
     // ========================================================================
 
+    /**
+     * @brief Input mode selector
+     */
+    enum class InputMode {
+        File,  ///< Playing from loaded WAV file
+        Live   ///< Live microphone input
+    };
+
     SpectrogramSettings settings_;  ///< Current settings
     bool running_;                   ///< Application running flag
     bool paused_;                    ///< Playback paused flag
     bool show_help_;                 ///< Show help overlay
+    InputMode input_mode_;           ///< Current input mode
 
     // ========================================================================
     // SDL Components
@@ -193,9 +225,14 @@ private:
     // Audio Data
     // ========================================================================
 
-    std::unique_ptr<RingBuffer<float>> ring_buffer_;  ///< Audio sample buffer
+    std::unique_ptr<RingBuffer<float>> ring_buffer_;  ///< Audio sample buffer (file mode)
     size_t current_audio_position_;  ///< Current read position in audio
     size_t total_audio_samples_;     ///< Total audio samples loaded
+
+    // Live audio input
+    std::unique_ptr<AudioEngine> audio_engine_;       ///< Real-time audio engine
+    std::vector<AudioDeviceInfo> available_devices_;  ///< Available input devices
+    size_t current_device_index_;                     ///< Currently selected device index
 
     // ========================================================================
     // Processing Components

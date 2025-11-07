@@ -21,6 +21,7 @@ FritureApp::FritureApp(int window_width, int window_height)
       running_(false),
       paused_(false),
       show_help_(false),
+      input_mode_(InputMode::File),
       window_(nullptr),
       renderer_(nullptr),
       texture_(nullptr),
@@ -28,6 +29,7 @@ FritureApp::FritureApp(int window_width, int window_height)
       window_height_(window_height),
       current_audio_position_(0),
       total_audio_samples_(0),
+      current_device_index_(0),
       fps_(0.0f),
       frame_count_(0)
 {
@@ -89,11 +91,35 @@ FritureApp::FritureApp(int window_width, int window_height)
         throw std::runtime_error(std::string("Texture creation failed: ") + SDL_GetError());
     }
 
+    // Initialize AudioEngine for live input (but don't start yet)
+    try {
+        audio_engine_ = std::make_unique<AudioEngine>(
+            settings_.sample_rate, 512, 60);
+
+        available_devices_ = audio_engine_->getInputDevices();
+
+        if (!available_devices_.empty()) {
+            std::cout << "Found " << available_devices_.size()
+                      << " audio input device(s):" << std::endl;
+            for (const auto& dev : available_devices_) {
+                std::cout << "  [" << dev.id << "] " << dev.name
+                          << (dev.is_default ? " (default)" : "") << std::endl;
+            }
+        } else {
+            std::cout << "No audio input devices detected - live mode unavailable" << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "AudioEngine initialization failed: " << e.what() << std::endl;
+        std::cerr << "Live audio input will be unavailable" << std::endl;
+        audio_engine_ = nullptr;
+    }
+
     std::cout << "Application initialized successfully" << std::endl;
     std::cout << "  Window: " << window_width_ << "x" << window_height_ << std::endl;
     std::cout << "  Spectrogram: " << window_width_ << "x" << spectrogram_height << std::endl;
     std::cout << "  FFT size: " << settings_.fft_size << std::endl;
     std::cout << "  Sample rate: " << settings_.sample_rate << " Hz" << std::endl;
+    std::cout << "  Input mode: FILE (press 'L' to toggle)" << std::endl;
 }
 
 FritureApp::~FritureApp() {
@@ -159,6 +185,83 @@ void FritureApp::initializeSDL() {
 
     // Note: Texture will be created after spectrogram_image_ is initialized
     texture_ = nullptr;
+}
+
+// ============================================================================
+// Mode Switching
+// ============================================================================
+
+void FritureApp::switchToLiveMode() {
+    if (!audio_engine_ || available_devices_.empty()) {
+        std::cerr << "Cannot switch to live mode: no audio devices available" << std::endl;
+        return;
+    }
+
+    // Stop current playback
+    paused_ = false;
+    current_audio_position_ = 0;
+    spectrogram_image_->clear();
+
+    // Start audio engine if not already running
+    if (!audio_engine_->isRunning()) {
+        if (!audio_engine_->start()) {
+            std::cerr << "Failed to start audio: " << audio_engine_->getError() << std::endl;
+            return;
+        }
+    }
+
+    input_mode_ = InputMode::Live;
+    std::cout << "Switched to LIVE mode";
+    if (current_device_index_ < available_devices_.size()) {
+        std::cout << " - Device: " << available_devices_[current_device_index_].name;
+    }
+    std::cout << std::endl;
+}
+
+void FritureApp::switchToFileMode() {
+    // Stop audio engine if running
+    if (audio_engine_ && audio_engine_->isRunning()) {
+        audio_engine_->stop();
+    }
+
+    input_mode_ = InputMode::File;
+    current_audio_position_ = 0;
+    spectrogram_image_->clear();
+
+    std::cout << "Switched to FILE mode" << std::endl;
+}
+
+void FritureApp::cycleInputDevice() {
+    if (!audio_engine_ || available_devices_.empty()) {
+        std::cerr << "No audio devices available" << std::endl;
+        return;
+    }
+
+    // Cycle to next device
+    current_device_index_ = (current_device_index_ + 1) % available_devices_.size();
+
+    // Stop current stream
+    if (audio_engine_->isRunning()) {
+        audio_engine_->stop();
+    }
+
+    // Set new device
+    if (!audio_engine_->setInputDevice(available_devices_[current_device_index_].id)) {
+        std::cerr << "Failed to set input device: " << audio_engine_->getError() << std::endl;
+        return;
+    }
+
+    // Restart if we're in live mode
+    if (input_mode_ == InputMode::Live) {
+        if (!audio_engine_->start()) {
+            std::cerr << "Failed to start audio on new device: "
+                      << audio_engine_->getError() << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Switched to device [" << available_devices_[current_device_index_].id
+              << "]: " << available_devices_[current_device_index_].name << std::endl;
 }
 
 // ============================================================================
@@ -353,6 +456,20 @@ void FritureApp::handleKeyboard(const SDL_KeyboardEvent& event) {
             std::cout << "Color theme cycling not implemented yet" << std::endl;
             break;
 
+        case SDLK_l:
+            // Toggle live/file mode
+            if (input_mode_ == InputMode::File) {
+                switchToLiveMode();
+            } else {
+                switchToFileMode();
+            }
+            break;
+
+        case SDLK_d:
+            // Cycle input devices
+            cycleInputDevice();
+            break;
+
         case SDLK_1:
             settings_.freq_scale = FrequencyScale::Linear;
             updateProcessingComponents();
@@ -432,19 +549,43 @@ void FritureApp::updateProcessingComponents() {
 // ============================================================================
 
 void FritureApp::processAudioFrame() {
-    // Check if we have enough samples
     size_t samples_needed = settings_.fft_size;
-    if (current_audio_position_ + samples_needed > total_audio_samples_) {
-        // Reached end of audio
-        return;
+
+    // ========================================================================
+    // Dual-mode data source selection
+    // ========================================================================
+
+    if (input_mode_ == InputMode::File) {
+        // FILE MODE: Read from pre-loaded ring buffer
+        if (current_audio_position_ + samples_needed > total_audio_samples_) {
+            // Reached end of audio
+            return;
+        }
+
+        ring_buffer_->read(current_audio_position_, fft_input_.data(), samples_needed);
+
+        // Advance position by hop size (based on overlap)
+        size_t hop_size = settings_.getSamplesPerColumn();
+        current_audio_position_ += hop_size;
     }
+    else { // InputMode::Live
+        // LIVE MODE: Read from AudioEngine ring buffer
+        if (!audio_engine_ || !audio_engine_->isRunning()) {
+            return; // No audio available
+        }
 
-    // Read samples from ring buffer
-    ring_buffer_->read(current_audio_position_, fft_input_.data(), samples_needed);
+        auto& live_buffer = audio_engine_->getRingBuffer();
+        size_t write_pos = live_buffer.getWritePosition();
 
-    // Advance position by hop size (based on overlap)
-    size_t hop_size = settings_.getSamplesPerColumn();
-    current_audio_position_ += hop_size;
+        // Check if we have enough samples accumulated
+        if (write_pos < samples_needed) {
+            return; // Not enough data yet
+        }
+
+        // Read most recent samples (sliding window for continuous visualization)
+        size_t read_pos = write_pos - samples_needed;
+        live_buffer.read(read_pos, fft_input_.data(), samples_needed);
+    }
 
     // FFT processing
     fft_processor_->process(fft_input_.data(), fft_output_.data());
@@ -560,10 +701,65 @@ void FritureApp::drawUI(SDL_Renderer* renderer) {
     text_renderer_->renderTextWithShadow(freq_range_buf, 400, window_height_ - 25,
                                         gray, black, 16, 1);
 
+    // Mode indicator (right side)
+    std::string mode_text = (input_mode_ == InputMode::File) ? "FILE" : "LIVE";
+    SDL_Color mode_color = (input_mode_ == InputMode::File) ? gray : green;
+    text_renderer_->renderTextWithShadow(mode_text, window_width_ - 220,
+                                        window_height_ - 25, mode_color, black, 16, 1);
+
     // Paused indicator (right side)
     if (paused_) {
         text_renderer_->renderTextWithShadow("PAUSED", window_width_ - 90,
                                             window_height_ - 25, red, black, 16, 1);
+    }
+
+    // ========================================================================
+    // Live Mode: Input Level Meter & Device Name
+    // ========================================================================
+
+    if (input_mode_ == InputMode::Live && audio_engine_ && audio_engine_->isRunning()) {
+        // Get input level (RMS)
+        float level = audio_engine_->getInputLevel();
+
+        // Draw level meter background
+        SDL_SetRenderDrawColor(renderer, 40, 40, 40, 200);
+        SDL_Rect meter_bg = {window_width_ - 140, window_height_ - 50, 120, 12};
+        SDL_RenderFillRect(renderer, &meter_bg);
+
+        // Draw level meter bar (green -> yellow -> red gradient)
+        int meter_width = static_cast<int>(level * 120.0f);
+        meter_width = std::clamp(meter_width, 0, 120);
+
+        if (meter_width > 0) {
+            // Color based on level: green < 0.7, yellow < 0.85, red >= 0.85
+            if (level < 0.7f) {
+                SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // Green
+            } else if (level < 0.85f) {
+                SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255); // Yellow
+            } else {
+                SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
+            }
+
+            SDL_Rect level_bar = {window_width_ - 140, window_height_ - 50, meter_width, 12};
+            SDL_RenderFillRect(renderer, &level_bar);
+        }
+
+        // Draw meter border
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        SDL_RenderDrawRect(renderer, &meter_bg);
+
+        // Show device name (above level meter)
+        if (current_device_index_ < available_devices_.size()) {
+            std::string dev_name = available_devices_[current_device_index_].name;
+
+            // Truncate if too long
+            if (dev_name.length() > 25) {
+                dev_name = dev_name.substr(0, 22) + "...";
+            }
+
+            text_renderer_->renderTextWithShadow(dev_name, window_width_ - 320,
+                                                window_height_ - 50, white, black, 12, 1);
+        }
     }
 
     // ========================================================================
@@ -650,6 +846,12 @@ void FritureApp::drawUI(SDL_Renderer* renderer) {
         text_renderer_->renderText("H      - Toggle this help", help_x + 20, line_y, white, 16);
         line_y += line_spacing;
 
+        text_renderer_->renderText("L      - Toggle Live/File mode", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
+        text_renderer_->renderText("D      - Cycle audio input devices", help_x + 20, line_y, white, 16);
+        line_y += line_spacing;
+
         text_renderer_->renderText("1-5    - Frequency scale (Linear/Log/Mel/ERB/Octave)",
                                   help_x + 20, line_y, white, 16);
         line_y += line_spacing;
@@ -691,11 +893,38 @@ void FritureApp::drawUIFallback(SDL_Renderer* renderer) {
     SDL_Rect fps_bar = {10, window_height_ - 20, fps_width, 10};
     SDL_RenderFillRect(renderer, &fps_bar);
 
+    // Mode indicator (colored square)
+    if (input_mode_ == InputMode::Live) {
+        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // Green for LIVE
+    } else {
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255); // Gray for FILE
+    }
+    SDL_Rect mode_indicator = {window_width_ - 100, window_height_ - 25, 20, 20};
+    SDL_RenderFillRect(renderer, &mode_indicator);
+
     // Paused indicator
     if (paused_) {
         SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
         SDL_Rect pause_indicator = {window_width_ - 50, window_height_ - 25, 40, 20};
         SDL_RenderFillRect(renderer, &pause_indicator);
+    }
+
+    // Level meter for live mode (simple bar)
+    if (input_mode_ == InputMode::Live && audio_engine_ && audio_engine_->isRunning()) {
+        float level = audio_engine_->getInputLevel();
+        int meter_width = static_cast<int>(level * 100.0f);
+        meter_width = std::clamp(meter_width, 0, 100);
+
+        if (level < 0.7f) {
+            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+        } else if (level < 0.85f) {
+            SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
+        } else {
+            SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        }
+
+        SDL_Rect level_bar = {window_width_ - 120, window_height_ - 45, meter_width, 10};
+        SDL_RenderFillRect(renderer, &level_bar);
     }
 
     // Help overlay
