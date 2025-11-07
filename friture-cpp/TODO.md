@@ -1,8 +1,8 @@
 # Friture C++ - Next Steps
 
 **Last Updated:** 2025-11-07
-**Branch:** `claude/analyze-friture-cpp-plan-011CUsbSFfrQGgkyG65buSed`
-**Status:** AudioEngine ready for app integration
+**Branch:** `claude/analyze-friture-cpp-plan-011CUsdHXJgdHVjyGk7nUdPL`
+**Status:** ✅ **Live Audio Input Complete!**
 
 ---
 
@@ -12,56 +12,71 @@
 - Complete signal processing pipeline (FFT → Resample → Color → Display)
 - SDL2 spectrogram visualization at 60 FPS with SDL_ttf UI
 - WAV file loader (all PCM formats, IEEE Float, mono/stereo)
-- **RtAudio AudioEngine** - ready for integration
+- **✅ Live Microphone Input** - fully integrated with mode switching
 - Full test suite: **100% passing** (9/9 tests)
 
 ### Recent Completions (2025-11-07)
+
+#### Phase 1: RtAudio Integration
 1. Fixed FFT and color transform test thresholds → 100% pass rate
 2. Integrated RtAudio 6.0.1 library into build system
 3. Created AudioEngine class with device enumeration, thread-safe capture, RMS monitoring
 
+#### Phase 2: FritureApp Integration ✅ **COMPLETE**
+1. Added `InputMode` enum (File/Live) to application
+2. Implemented mode switching methods (switchToLiveMode, switchToFileMode, cycleInputDevice)
+3. Updated processAudioFrame() for dual-mode data source
+4. Added keyboard controls: `L` (toggle mode), `D` (cycle devices)
+5. Enhanced UI with:
+   - Mode indicator in status bar (FILE/LIVE with color coding)
+   - Real-time input level meter with gradient (green→yellow→red)
+   - Device name display in live mode
+   - Updated help overlay with new shortcuts
+6. Graceful fallback for headless/no-device environments
+
 ---
 
-## 🎯 Next: FritureApp Integration (2-3 hours)
+## 🎯 Next: GPU Rendering with SDL3 (10-12 hours)
 
 ### Goal
-Integrate AudioEngine into FritureApp for live microphone input
+Transform SDL2 CPU rendering to GPU-accelerated rendering with SDL3
+
+### Why GPU Rendering?
+Current implementation uses SDL_RenderCopy (CPU texture upload every frame):
+- Limited to ~60 FPS at 1920×1080
+- High CPU usage for texture updates
+- No subpixel scrolling
+- Inefficient for 4K displays
+
+SDL3 GPU rendering benefits:
+- 60+ FPS at 4K resolution
+- <5% CPU usage (GPU does colormapping)
+- Smooth subpixel scrolling
+- Persistent-mapped buffers (zero-copy texture streaming)
 
 ### Implementation Tasks
 
-**1. Update FritureApp Class**
-- Add `std::unique_ptr<AudioEngine> audio_engine_` member
-- Add `enum class InputMode { File, Live }` state
-- Add mode switching logic
+**1. SDL3 Migration**
+- Update CMakeLists.txt to find SDL3
+- Replace SDL2 API calls with SDL3 equivalents
+- Port window/renderer creation to SDL3_GPU
 
-**2. Keyboard Controls**
-- `L` - Toggle live/file mode
-- `D` - Cycle through audio input devices
-- Update help overlay with new controls
+**2. GLSL Shaders**
+- Vertex shader: full-screen quad with texture coordinates
+- Fragment shader:
+  - Scroll offset via push constants
+  - CMRMAP colormap in 1D lookup texture
+  - Real-time colormapping on GPU
 
-**3. UI Updates**
-- Show current mode in status bar ("FILE" / "LIVE")
-- Display input device name when in live mode
-- Input level meter (RMS bar) in live mode
+**3. Spectrogram Texture Streaming**
+- Use GPU_UploadToTexture for column updates
+- Ring buffer wrapping handled in shader
+- No CPU-side pixel format conversion
 
-**4. Data Flow**
-```cpp
-// File mode (existing):
-ring_buffer_->read(position, buffer, size);
-
-// Live mode (new):
-audio_engine_->getRingBuffer().read(position, buffer, size);
-```
-
-**5. Error Handling**
-- Gracefully handle "no audio devices" → stay in file mode
-- Device disconnection → auto-switch to file mode
-- Show error messages in UI
-
-**6. Testing**
-- Test with headless environment (should detect no devices)
-- Verify fallback to file mode works correctly
-- Test keyboard controls and UI updates
+**4. Performance Targets**
+- 60+ FPS at 4K (3840×2160)
+- <10ms frame time
+- <5% CPU usage
 
 ---
 
@@ -115,10 +130,10 @@ xvfb-run -a -s "-screen 0 1280x720x24" ./src/friture test.wav
 | SPACE | Pause/Resume |
 | R | Reset to beginning |
 | H | Toggle help overlay |
+| **L** | **Toggle Live/File mode** ✅ |
+| **D** | **Cycle audio devices** ✅ |
 | 1-5 | Frequency scale (Linear/Log/Mel/ERB/Octave) |
 | +/- | Adjust FFT size |
-| **L** | **Toggle Live/File mode** (TODO) |
-| **D** | **Cycle audio devices** (TODO) |
 | Q/ESC | Quit |
 
 ### Dependencies

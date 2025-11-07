@@ -32,6 +32,8 @@ void printUsage(const char* program_name) {
     std::cout << "  SPACE    - Pause/Resume playback" << std::endl;
     std::cout << "  R        - Reset to beginning" << std::endl;
     std::cout << "  H        - Toggle help overlay" << std::endl;
+    std::cout << "  L        - Toggle Live/File mode" << std::endl;
+    std::cout << "  D        - Cycle audio input devices" << std::endl;
     std::cout << "  1        - Linear frequency scale" << std::endl;
     std::cout << "  2        - Logarithmic frequency scale" << std::endl;
     std::cout << "  3        - Mel frequency scale" << std::endl;
