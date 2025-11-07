@@ -1,46 +1,33 @@
+# Build directories
+build/
+cmake-build-*/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
 *~
-*.pyc
+
+# Compiled object files only (not source)
+*.o
+*.a
 *.so
-*.npy
-*.pyd
-*.wav
+*.so.*
+*.dylib
 *.exe
-*.zip
-*.c
-*.bak
-*.db
-*.cpp
-*.cprof
-*.trace
-MANIFEST
-autopep8.out.txt
+*.out
 
-build/*
-dist/*
-doc/_build/*
-doc/Makefile
-doc/make.bat
-env/*
-buildenv/*
-venv/*
-tools/*
-friture.egg-info
-.eggs/
-*.appx
+# Test outputs
+*.bmp
+*.png
+*.wav
 
-##################
-# IDE files
-##################
-*.pydevproject
-.project
-.ropeproject
-.spyderproject
-Notepad++
-.idea
-.vscode
-.qt_for_python
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
 
-.mypy_cache
-
-# Macos
+# Other
 .DS_Store
