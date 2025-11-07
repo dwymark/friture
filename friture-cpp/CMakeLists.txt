@@ -6,7 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Compiler warnings and optimization
-add_compile_options(-Wall -Wextra -Wpedantic -O2)
+if(MSVC)
+    # MSVC-specific flags
+    add_compile_options(/W4 /O2)
+else()
+    # GCC/Clang flags
+    add_compile_options(-Wall -Wextra -Wpedantic -O2)
+endif()
 
 # Options
 option(BUILD_TESTS "Build tests" ON)
@@ -14,12 +20,26 @@ option(BUILD_EXAMPLES "Build example programs" ON)
 option(USE_FFTW "Use FFTW3 for FFT" ON)
 
 # Find dependencies
-find_package(PkgConfig REQUIRED)
+# PkgConfig is optional - not commonly used on Windows with vcpkg
+find_package(PkgConfig QUIET)
 
 # SDL2 (optional for now - needed for rendering later)
-pkg_check_modules(SDL2 sdl2)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(SDL2 sdl2)
+endif()
+
+# If pkg-config didn't find SDL2, try find_package (works with vcpkg)
+if(NOT SDL2_FOUND)
+    find_package(SDL2 CONFIG QUIET)
+    if(SDL2_FOUND)
+        set(SDL2_LIBRARIES SDL2::SDL2)
+    endif()
+endif()
+
 if(SDL2_FOUND)
-    include_directories(${SDL2_INCLUDE_DIRS})
+    if(SDL2_INCLUDE_DIRS)
+        include_directories(${SDL2_INCLUDE_DIRS})
+    endif()
     message(STATUS "SDL2 found: ${SDL2_VERSION}")
 else()
     message(STATUS "SDL2 not found - rendering features will be unavailable")
