@@ -4,11 +4,18 @@
 add_executable(ringbuffer_test ringbuffer_test.cpp)
 
 # Link against GoogleTest
-target_link_libraries(ringbuffer_test
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(ringbuffer_test
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(ringbuffer_test
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(ringbuffer_test PRIVATE
@@ -18,7 +25,8 @@ target_include_directories(ringbuffer_test PRIVATE
 # Enable sanitizers for tests (best practice for catching bugs early)
 # AddressSanitizer detects: memory leaks, use-after-free, buffer overflows
 # UndefinedBehaviorSanitizer detects: undefined behavior like integer overflow
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+# Note: Sanitizers are only available on GCC/Clang, not MSVC
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Sanitizer flags
     set(SANITIZER_FLAGS
         -fsanitize=address
@@ -53,11 +61,18 @@ set_tests_properties(ringbuffer_test PROPERTIES
 add_executable(settings_test settings_test.cpp)
 
 # Link against GoogleTest
-target_link_libraries(settings_test
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(settings_test
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(settings_test
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(settings_test PRIVATE
@@ -65,7 +80,7 @@ target_include_directories(settings_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(settings_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(settings_test PRIVATE ${SANITIZER_FLAGS})
@@ -89,12 +104,20 @@ set_tests_properties(settings_test PROPERTIES
 add_executable(fft_processor_test fft_processor_test.cpp)
 
 # Link against GoogleTest and friture_processing library
-target_link_libraries(fft_processor_test
-    friture_processing
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(fft_processor_test
+        friture_processing
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(fft_processor_test
+        friture_processing
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(fft_processor_test PRIVATE
@@ -102,7 +125,7 @@ target_include_directories(fft_processor_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(fft_processor_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(fft_processor_test PRIVATE ${SANITIZER_FLAGS})
@@ -126,12 +149,20 @@ set_tests_properties(fft_processor_test PROPERTIES
 add_executable(frequency_resampler_test frequency_resampler_test.cpp)
 
 # Link against GoogleTest and friture_processing library
-target_link_libraries(frequency_resampler_test
-    friture_processing
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(frequency_resampler_test
+        friture_processing
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(frequency_resampler_test
+        friture_processing
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(frequency_resampler_test PRIVATE
@@ -139,7 +170,7 @@ target_include_directories(frequency_resampler_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(frequency_resampler_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(frequency_resampler_test PRIVATE ${SANITIZER_FLAGS})
@@ -163,12 +194,20 @@ set_tests_properties(frequency_resampler_test PROPERTIES
 add_executable(color_transform_test color_transform_test.cpp)
 
 # Link against GoogleTest and friture_processing library
-target_link_libraries(color_transform_test
-    friture_processing
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(color_transform_test
+        friture_processing
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(color_transform_test
+        friture_processing
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(color_transform_test PRIVATE
@@ -176,7 +215,7 @@ target_include_directories(color_transform_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(color_transform_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(color_transform_test PRIVATE ${SANITIZER_FLAGS})
@@ -200,12 +239,20 @@ set_tests_properties(color_transform_test PROPERTIES
 add_executable(spectrogram_image_test spectrogram_image_test.cpp)
 
 # Link against GoogleTest and friture_rendering library
-target_link_libraries(spectrogram_image_test
-    friture_rendering
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(spectrogram_image_test
+        friture_rendering
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(spectrogram_image_test
+        friture_rendering
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(spectrogram_image_test PRIVATE
@@ -213,7 +260,7 @@ target_include_directories(spectrogram_image_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(spectrogram_image_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(spectrogram_image_test PRIVATE ${SANITIZER_FLAGS})
@@ -237,12 +284,20 @@ set_tests_properties(spectrogram_image_test PROPERTIES
 add_executable(audio_file_loader_test audio_file_loader_test.cpp)
 
 # Link against GoogleTest and friture_audio library
-target_link_libraries(audio_file_loader_test
-    friture_audio
-    GTest::gtest
-    GTest::gtest_main
-    pthread
-)
+if(WIN32)
+    target_link_libraries(audio_file_loader_test
+        friture_audio
+        GTest::gtest
+        GTest::gtest_main
+    )
+else()
+    target_link_libraries(audio_file_loader_test
+        friture_audio
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(audio_file_loader_test PRIVATE
@@ -250,7 +305,7 @@ target_include_directories(audio_file_loader_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(audio_file_loader_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(audio_file_loader_test PRIVATE ${SANITIZER_FLAGS})
@@ -274,13 +329,22 @@ set_tests_properties(audio_file_loader_test PROPERTIES
 add_executable(text_renderer_test text_renderer_test.cpp)
 
 # Link against GoogleTest, friture_ui library, SDL2 and SDL2_ttf
-target_link_libraries(text_renderer_test
-    friture_ui
-    GTest::gtest
-    ${SDL2_LIBRARIES}
-    SDL2_ttf
-    pthread
-)
+if(WIN32)
+    target_link_libraries(text_renderer_test
+        friture_ui
+        GTest::gtest
+        ${SDL2_LIBRARIES}
+        ${SDL2_TTF_LIBRARY}
+    )
+else()
+    target_link_libraries(text_renderer_test
+        friture_ui
+        GTest::gtest
+        ${SDL2_LIBRARIES}
+        ${SDL2_TTF_LIBRARY}
+        pthread
+    )
+endif()
 
 # Include directories
 target_include_directories(text_renderer_test PRIVATE
@@ -288,7 +352,7 @@ target_include_directories(text_renderer_test PRIVATE
 )
 
 # Enable sanitizers for tests
-if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+if((CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE) AND NOT MSVC)
     # Apply sanitizer flags
     target_compile_options(text_renderer_test PRIVATE ${SANITIZER_FLAGS})
     target_link_options(text_renderer_test PRIVATE ${SANITIZER_FLAGS})

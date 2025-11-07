@@ -14,6 +14,7 @@
  * Output: BMP images in friture-cpp/output/ directory
  */
 
+#define _USE_MATH_DEFINES  // For M_PI on Windows/MSVC
 #include <friture/ringbuffer.hpp>
 #include <friture/settings.hpp>
 #include <friture/fft_processor.hpp>

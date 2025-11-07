@@ -3,6 +3,7 @@
  * @brief Unit tests for AudioFileLoader
  */
 
+#define _USE_MATH_DEFINES  // For M_PI on Windows/MSVC
 #include <friture/audio/audio_file_loader.hpp>
 #include <gtest/gtest.h>
 #include <cstdio>

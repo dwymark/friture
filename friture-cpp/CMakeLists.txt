@@ -6,7 +6,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Compiler warnings and optimization
-add_compile_options(-Wall -Wextra -Wpedantic -O2)
+if(MSVC)
+    # MSVC-specific flags
+    add_compile_options(/W4 /O2)
+else()
+    # GCC/Clang flags
+    add_compile_options(-Wall -Wextra -Wpedantic -O2)
+endif()
 
 # Options
 option(BUILD_TESTS "Build tests" ON)
@@ -14,25 +20,61 @@ option(BUILD_EXAMPLES "Build example programs" ON)
 option(USE_FFTW "Use FFTW3 for FFT" ON)
 
 # Find dependencies
-find_package(PkgConfig REQUIRED)
+# PkgConfig is optional - not commonly used on Windows with vcpkg
+find_package(PkgConfig QUIET)
 
 # SDL2 (optional for now - needed for rendering later)
-pkg_check_modules(SDL2 sdl2)
+if(WIN32)
+    # On Windows with vcpkg, use find_package directly for proper config-aware targets
+    find_package(SDL2 CONFIG QUIET)
+    if(SDL2_FOUND)
+        # On Windows, SDL2main is required for proper main() entry point
+        set(SDL2_LIBRARIES SDL2::SDL2main SDL2::SDL2)
+    endif()
+else()
+    # On Linux/macOS, try pkg-config first
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(SDL2 sdl2)
+    endif()
+
+    # If pkg-config didn't find SDL2, try find_package
+    if(NOT SDL2_FOUND)
+        find_package(SDL2 CONFIG QUIET)
+        if(SDL2_FOUND)
+            set(SDL2_LIBRARIES SDL2::SDL2)
+        endif()
+    endif()
+endif()
+
 if(SDL2_FOUND)
-    include_directories(${SDL2_INCLUDE_DIRS})
+    if(SDL2_INCLUDE_DIRS)
+        include_directories(${SDL2_INCLUDE_DIRS})
+    endif()
     message(STATUS "SDL2 found: ${SDL2_VERSION}")
 else()
     message(STATUS "SDL2 not found - rendering features will be unavailable")
 endif()
 
 # SDL2_ttf (for text rendering)
-find_library(SDL2_TTF_LIBRARY SDL2_ttf)
-find_path(SDL2_TTF_INCLUDE_DIR SDL2/SDL_ttf.h)
-if(SDL2_TTF_LIBRARY AND SDL2_TTF_INCLUDE_DIR)
-    include_directories(${SDL2_TTF_INCLUDE_DIR})
-    message(STATUS "SDL2_ttf found")
+if(WIN32)
+    # On Windows with vcpkg, use find_package for proper debug/release handling
+    find_package(SDL2_ttf CONFIG QUIET)
+    if(SDL2_ttf_FOUND)
+        set(SDL2_TTF_LIBRARY SDL2_ttf::SDL2_ttf)
+        message(STATUS "SDL2_ttf found")
+    else()
+        message(STATUS "SDL2_ttf not found - text rendering will be unavailable")
+    endif()
 else()
-    message(STATUS "SDL2_ttf not found - text rendering will be unavailable")
+    # On Linux/macOS, use traditional find_library
+    find_library(SDL2_TTF_LIBRARY SDL2_ttf)
+    find_path(SDL2_TTF_INCLUDE_DIR SDL2/SDL_ttf.h)
+    if(SDL2_TTF_LIBRARY AND SDL2_TTF_INCLUDE_DIR)
+        include_directories(${SDL2_TTF_INCLUDE_DIR})
+        message(STATUS "SDL2_ttf found")
+    else()
+        message(STATUS "SDL2_ttf not found - text rendering will be unavailable")
+    endif()
 endif()
 
 # PortAudio (optional for now - needed for audio input later)

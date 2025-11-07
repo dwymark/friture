@@ -21,7 +21,11 @@ target_include_directories(pipeline_test PRIVATE
 
 # 1. PortAudio test
 add_executable(test_portaudio test_portaudio.cpp)
-target_link_libraries(test_portaudio ${PORTAUDIO_LIBRARY} asound pthread m)
+if(WIN32)
+    target_link_libraries(test_portaudio ${PORTAUDIO_LIBRARY})
+else()
+    target_link_libraries(test_portaudio ${PORTAUDIO_LIBRARY} asound pthread m)
+endif()
 
 # 2. SDL2 test
 add_executable(test_sdl2 test_sdl2.cpp)
@@ -30,7 +34,12 @@ target_link_libraries(test_sdl2 ${SDL2_LIBRARIES})
 # 3. FFT test
 add_executable(test_fft test_fft.cpp)
 if(USE_FFTW)
-    target_link_libraries(test_fft ${FFTW3_LIBRARY} fftw3f m)
+    if(WIN32)
+        find_library(FFTW3F_LIBRARY fftw3f)
+        target_link_libraries(test_fft ${FFTW3_LIBRARY} ${FFTW3F_LIBRARY})
+    else()
+        target_link_libraries(test_fft ${FFTW3_LIBRARY} fftw3f m)
+    endif()
 else()
     target_link_libraries(test_fft Eigen3::Eigen)
 endif()
