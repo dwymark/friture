@@ -56,10 +56,10 @@ std::vector<AudioDeviceInfo> AudioEngine::getInputDevices() const {
         return devices;
     }
 
-    std::vector<unsigned int> device_ids = audio_->getDeviceIds();
+    unsigned int device_count = audio_->getDeviceCount();
     unsigned int default_input = audio_->getDefaultInputDevice();
 
-    for (unsigned int id : device_ids) {
+    for (unsigned int id = 0; id < device_count; id++) {
         RtAudio::DeviceInfo info = audio_->getDeviceInfo(id);
 
         // Only include devices with input channels
@@ -137,8 +137,9 @@ bool AudioEngine::start() {
 
     unsigned int buffer_frames = static_cast<unsigned int>(buffer_size_);
 
-    // Open stream - returns non-zero on error
-    if (audio_->openStream(
+    // Open stream - throws exception on error in RtAudio 5.x
+    try {
+        audio_->openStream(
             nullptr,          // No output
             &input_params,    // Input parameters
             RTAUDIO_FLOAT32,  // Sample format
@@ -146,16 +147,18 @@ bool AudioEngine::start() {
             &buffer_frames,
             &AudioEngine::audioCallback,
             this              // User data
-        ) != 0)
-    {
-        error_message_ = "Failed to open stream";
+        );
+    } catch (RtAudioError& e) {
+        error_message_ = "Failed to open stream: " + std::string(e.what());
         std::cerr << error_message_ << std::endl;
         return false;
     }
 
-    // Start stream
-    if (audio_->startStream() != 0) {
-        error_message_ = "Failed to start stream";
+    // Start stream - throws exception on error in RtAudio 5.x
+    try {
+        audio_->startStream();
+    } catch (RtAudioError& e) {
+        error_message_ = "Failed to start stream: " + std::string(e.what());
         std::cerr << error_message_ << std::endl;
         audio_->closeStream();
         return false;
