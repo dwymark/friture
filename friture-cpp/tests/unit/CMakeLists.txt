@@ -265,3 +265,41 @@ set_tests_properties(audio_file_loader_test PROPERTIES
     TIMEOUT 30
     ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1"
 )
+
+# ============================================================================
+# Text Renderer Test
+# ============================================================================
+
+# Create text_renderer test executable
+add_executable(text_renderer_test text_renderer_test.cpp)
+
+# Link against GoogleTest, friture_ui library, SDL2 and SDL2_ttf
+target_link_libraries(text_renderer_test
+    friture_ui
+    GTest::gtest
+    ${SDL2_LIBRARIES}
+    SDL2_ttf
+    pthread
+)
+
+# Include directories
+target_include_directories(text_renderer_test PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Enable sanitizers for tests
+if(CMAKE_BUILD_TYPE MATCHES "Debug" OR NOT CMAKE_BUILD_TYPE)
+    # Apply sanitizer flags
+    target_compile_options(text_renderer_test PRIVATE ${SANITIZER_FLAGS})
+    target_link_options(text_renderer_test PRIVATE ${SANITIZER_FLAGS})
+    message(STATUS "Enabled sanitizers for text_renderer_test (ASan + UBSan)")
+endif()
+
+# Register test with CTest
+add_test(NAME text_renderer_test COMMAND text_renderer_test)
+
+# Set test properties
+set_tests_properties(text_renderer_test PROPERTIES
+    TIMEOUT 30
+    ENVIRONMENT "ASAN_OPTIONS=detect_leaks=1:check_initialization_order=1;SDL_VIDEODRIVER=dummy"
+)
