@@ -20,7 +20,7 @@ make -j$(nproc)
 ## Documentation
 
 - **[CLAUDE.md](CLAUDE.md)** - Complete environment setup guide (649 lines)
-- **[FRITURE_CPP_PORT_PLAN.md](../FRITURE_CPP_PORT_PLAN.md)** - Full specification and implementation plan
+- **[FRITURE_CPP_PORT_PLAN.md](FRITURE_CPP_PORT_PLAN.md)** - Full specification and implementation plan
 
 ## Technology Stack
 
@@ -52,7 +52,7 @@ This project is designed to build and test in headless cloud environments. See [
 
 ## License
 
-See [COPYING.txt](../COPYING.txt) - GNU GPL v3
+See [COPYING.txt](COPYING.txt) - GNU GPL v3
 
 ## Original Project
 

@@ -100,13 +100,13 @@ Successfully loaded and visualized:
 
 ### Load WAV File
 ```bash
-cd friture-cpp/build/src
+cd build/src
 ./friture ../../samples/chirp_100_10k_pcm16.wav
 ```
 
 ### Generate Test Files
 ```bash
-cd friture-cpp/samples
+cd samples
 g++ -std=c++20 -O2 generate_test_wavs.cpp -o generate_test_wavs -lm
 ./generate_test_wavs .
 ```
