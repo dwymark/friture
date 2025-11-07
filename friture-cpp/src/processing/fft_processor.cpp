@@ -6,6 +6,7 @@
  * @date 2025-11-06
  */
 
+#define _USE_MATH_DEFINES  // For M_PI on Windows/MSVC
 #include <friture/fft_processor.hpp>
 #include <cmath>
 #include <stdexcept>

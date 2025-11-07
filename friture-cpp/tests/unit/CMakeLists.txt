@@ -334,14 +334,14 @@ if(WIN32)
         friture_ui
         GTest::gtest
         ${SDL2_LIBRARIES}
-        SDL2_ttf
+        ${SDL2_TTF_LIBRARY}
     )
 else()
     target_link_libraries(text_renderer_test
         friture_ui
         GTest::gtest
         ${SDL2_LIBRARIES}
-        SDL2_ttf
+        ${SDL2_TTF_LIBRARY}
         pthread
     )
 endif()

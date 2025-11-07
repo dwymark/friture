@@ -6,5 +6,5 @@ add_library(friture_ui
 
 target_link_libraries(friture_ui
     ${SDL2_LIBRARIES}
-    SDL2_ttf
+    ${SDL2_TTF_LIBRARY}
 )

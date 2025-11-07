@@ -12,8 +12,9 @@ target_include_directories(friture_processing PUBLIC
 
 # Link FFTW3 float library
 if(WIN32)
+    find_library(FFTW3F_LIBRARY fftw3f)
     target_link_libraries(friture_processing PUBLIC
-        fftw3f  # Float version for single-precision
+        ${FFTW3F_LIBRARY}  # Float version for single-precision
     )
 else()
     target_link_libraries(friture_processing PUBLIC

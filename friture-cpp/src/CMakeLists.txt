@@ -17,7 +17,7 @@ if(SDL2_FOUND)
         friture_rendering
         friture_ui
         ${SDL2_LIBRARIES}
-        SDL2_ttf
+        ${SDL2_TTF_LIBRARY}
     )
 
     message(STATUS "Main application 'friture' configured")
